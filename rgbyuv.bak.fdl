@@ -1,0 +1,126 @@
+/////// You need to specify XXX depending on your fixed-point refinement
+/////// You need to specify XXX depending on your fixed-point refinement
+/////// You need to specify XXX depending on your fixed-point refinement
+
+////// RGBYUV DATA PATH //////
+dp rgbyuv( in start_rgbyuv                     : ns(1);
+          out fin_rgbyuv                       : ns(1);
+           in dout1_r, dout1_g, dout1_b        : ns(8);
+          out ad1r_r,  ad1r_g,  ad1r_b         : ns(9);
+          out rd1_r,   rd1_g,   rd1_b          : ns(1);
+          out din2_y1, din2_y2, din2_u, din2_v : ns(8);
+          out ad2w_y1, ad2w_y2, ad2w_u, ad2w_v : ns(9);
+          out wr2_y1,  wr2_y2,  wr2_u,  wr2_v  : ns(1) ) 
+{
+	reg r, g, b 			: ns( 8);
+	sig y1t, y2t, ut, vt, unb, vnb	: tc(15);
+	reg y1, y2, u, v 		: tc(15);
+	reg curr_raddr		 	: ns( 9);
+	reg curr_waddr 			: ns( 9);
+	reg fin, start			: ns( 1);
+
+	sfg init {
+		curr_raddr = 0;
+		curr_waddr = 0;
+		fin = 0;
+		$display("Inited, cycle: ", $cycle);
+	}
+
+	sfg flag {
+		fin_rgbyuv = fin;
+	}
+
+	sfg read {
+		$display("Read, cycle: ", $cycle);
+		
+		ad1r_r = curr_raddr;
+		ad1r_g = curr_raddr;
+		ad1r_b = curr_raddr;
+
+		rd1_r = 1;
+		rd1_g = 1;
+		rd1_b = 1;
+
+		r = dout1_r;
+		g = dout1_g;
+		b = dout1_b;
+
+		curr_raddr = curr_raddr+1;
+	}
+
+	sfg convert {
+		y1t =  38*r + 75*g + 15*b; // x2^-7
+		y2t =  38*r + 75*g + 15*b; // x2^-7
+		ut  = -22*r - 42*g + 64*b; // x2^-7
+		vt  =  64*r - 54*g - 10*b; // x2^-7
+
+		y1 = y1t >> 7;
+		y2 = y2t >> 7;
+		unb = ut >> 7;
+		vnb = vt >> 7;
+
+		u = unb + 128;
+		v = vnb + 128;
+	}
+	
+	sfg noread {
+		ad1r_r = 0;
+		ad1r_g = 0;
+		ad1r_b = 0;
+		rd1_r = 0;
+		rd1_g = 0;
+		rd1_b = 0;		
+	}
+	
+	sfg nowrite {
+		din2_y1 = 0;
+		din2_y2 = 0;
+		din2_u = 0;
+		din2_v = 0;
+		ad2w_y1 = 0;
+		ad2w_y2 = 0;
+		ad2w_u = 0;
+		ad2w_v = 0;
+		wr2_y1 = 0;
+		wr2_y2 = 0;
+		wr2_u = 0;
+		wr2_v = 0;		
+	}
+
+	sfg wait_start {
+		start = start_rgbyuv;
+	}
+
+	sfg write {
+		ad2w_y1 = curr_waddr;
+		ad2w_y2 = curr_waddr;
+		ad2w_u = curr_waddr;
+		ad2w_v = curr_waddr;
+
+		din2_y1 = y1;
+		din2_y2 = y2;
+		din2_u  = u;
+		din2_v  = v;
+
+		wr2_y1 = 1;
+		wr2_y2 = 1;
+		wr2_u = 1;
+		wr2_v = 1;
+
+		curr_waddr = curr_waddr + 1;
+
+		fin = (curr_waddr == 511) ? 1 : 0;
+	}
+}
+
+////// RGBYUV FSM //////
+fsm rgbyuv_ctl(rgbyuv) {
+	initial s0;
+	state  s1, s2;
+
+	@s0	(init, flag, noread, nowrite) -> s1;
+	@s1 if (start) then (read, flag, nowrite) -> s2;
+		else (flag, noread, nowrite, wait_start) -> s1;
+	@s2	if (fin) then (flag, noread, nowrite) -> s0;
+		else (read, convert, write, flag) -> s2;
+}

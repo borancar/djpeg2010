@@ -1,0 +1,1499 @@
+dp main ( in fin_8ln0, fin_rgb0, fin_dct0, fin_qnt0, fin_huf0 : ns(1);
+          out bufsel2, bufsel3, bufsel4 : ns(1);
+          out start_rgb, start_dct, start_qnt, start_huf, start_dmp : ns(1) )
+{
+ reg fin_8ln, fin_rgb, fin_dct, fin_qnt, fin_huf : ns(1);
+ reg bufs2_reg, bufs3_reg, bufs4_reg : ns(1);
+
+ reg rgb_reg, dct_reg, qnt_reg, huf_reg, dmp_reg : ns(1);
+
+ reg c4 : ns(3);
+ reg c5 : ns(4);
+
+ always {
+  start_rgb=rgb_reg;
+  start_dct=dct_reg;
+  start_qnt=qnt_reg;
+  start_huf=huf_reg;
+  start_dmp=dmp_reg;
+
+  bufsel2=bufs2_reg;
+  bufsel3=bufs3_reg;
+  bufsel4=bufs4_reg;
+
+  fin_8ln=fin_8ln0;
+  fin_rgb=fin_rgb0;
+  fin_dct=fin_dct0;
+  fin_qnt=fin_qnt0;
+  fin_huf=fin_huf0;
+ }
+
+ $trace(fin_rgb,"fin_rgb.txt");
+
+ sfg init {
+  rgb_reg=0;
+  dct_reg=0;
+   qnt_reg=0;
+   huf_reg=0;
+   dmp_reg=0;
+  bufs2_reg=0;
+  bufs3_reg=0;
+  bufs4_reg=0;
+  c4=0;
+  c5=0;
+ }
+
+ sfg startRGB{
+  rgb_reg=1;
+ }
+ sfg stopRGB{
+  rgb_reg=0;
+ }
+ sfg startDCT{
+  dct_reg=1;
+ }
+ sfg stopDCT{
+  dct_reg=0;
+ }
+ sfg startQNT{
+  qnt_reg=1;
+ }
+ sfg stopQNT{
+  qnt_reg=0;
+ }
+ sfg startHUF{
+  huf_reg=1;
+ }
+ sfg stopHUF{
+  huf_reg=0;
+ }
+ sfg startDMP{
+   dmp_reg=1;
+ }
+ sfg stopDMP{
+  dmp_reg=0;
+ }
+
+ sfg flipB2 {
+  bufs2_reg=~bufs2_reg;
+ }
+ sfg flipB3 {
+  bufs3_reg=~bufs3_reg;
+ }
+ sfg flipB4 {
+  bufs4_reg=~bufs4_reg;
+ }
+
+ sfg idle {
+  rgb_reg=0;
+  dct_reg=0;
+  qnt_reg=0;
+  huf_reg=0;
+  dmp_reg=0;
+ }
+ sfg startRGB_DCT{
+  rgb_reg=1;
+  dct_reg=1;
+ }
+ sfg startRGB_DCT_QNT{
+  rgb_reg=1;
+  dct_reg=1;
+  qnt_reg=1;
+ }
+ sfg startRGB_DCT_QNT_HUF{
+  rgb_reg=1;
+  dct_reg=1;
+  qnt_reg=1;
+  huf_reg=1;
+ }
+
+ sfg incC4 {
+  c4=c4+1;
+ }
+ sfg incC5 {
+  c5=c5+1;
+ }
+
+ sfg alldone {
+  $display("All done");
+ }
+
+ $trace(c4,"c4.txt");
+}
+
+
+fsm main_ctl(main) {
+
+ initial s0;
+ state s1, s2, s2i, s3, s4, s5, s5i, s6, s7, s8, s9;
+
+ @s0 if (fin_8ln) then (startRGB) -> s1;
+  else (init) -> s0;
+
+ @s1 if (fin_rgb) then (startRGB_DCT,flipB2) -> s2i;
+  else (idle)-> s1;
+
+ @s2i (idle) -> s2;
+
+ @s2 if (fin_rgb & fin_dct) then (startRGB_DCT_QNT,flipB2,flipB3) -> s3;
+  else (idle)-> s2;
+
+ @s3 if (fin_rgb & fin_dct & fin_qnt) then (startRGB_DCT_QNT_HUF,flipB2,flipB3,flipB4) -> s4;
+  else (idle)-> s3;
+
+ @s4 if (fin_rgb & fin_dct & fin_qnt & fin_huf & fin_8ln) then (alldone) -> s5i;
+     else if(fin_rgb & fin_dct & fin_qnt & fin_huf & ~fin_8ln) then(alldone) -> s5;
+     else (idle) -> s4;
+
+ @s5i if(fin_8ln) then (idle) -> s5i;
+      else (idle) -> s5;
+
+ @s5 if (fin_8ln==1) then (startRGB_DCT_QNT_HUF,flipB2,flipB3,flipB4,incC4) -> s6;
+     else (idle) -> s5;
+
+ @s6 if (fin_rgb & fin_dct & fin_qnt & fin_huf) then (startRGB_DCT_QNT_HUF,flipB2,flipB3,flipB4,incC4) -> s7;
+     else (idle) -> s6;
+
+  @s7 if (c4==0) then (idle,incC5) -> s8;
+   else (idle) -> s6;
+
+ @s8 if (c5==7) then (idle) -> s9;
+  else (idle) -> s4;
+
+ @s9 (startDMP) -> s9;
+
+
+}
+ipblock testfile(out c, d1, d2, d3 : ns(8)) {
+  iptype "filesource";
+  ipparm "file=bunny_ppm.txt";
+  ipparm "wl=8";
+  ipparm "base=16";
+}
+dp test_jpeg( out datar, datag, datab : ns(8);
+              out vsync, hsync, oddeven : ns(1) )
+{
+  sig ctrl, pixr, pixg, pixb : ns(8);
+  use testfile(ctrl, pixr, pixg, pixb);
+  sfg run {
+             vsync = ctrl[0];
+             hsync = ctrl[1];
+             oddeven = ctrl[2];
+             datar = pixr;
+             datag = pixg;
+             datab = pixb;
+$display("TEST INPUT (R,G,B)=",datar,datag,datab," vsync=",vsync," hsync=",hsync," oddeven=",oddeven);
+ }
+}
+hardwired h_test_jpeg(test_jpeg) { run; }
+dp camif ( in datar : ns(8);
+           in datag : ns(8);
+           in datab : ns(8);
+           in vsync : ns(1);
+           in hsync : ns(1);
+           in oddeven : ns(1);
+          out bufsel1 : ns(1);
+          out fin8line : ns(1);
+          out adr, adg, adb : ns(9);
+          out wrr, wrg, wrb : ns(1);
+          out dir, dig, dib : ns(8) )
+{
+ reg ad : ns(9);
+ sig wr : ns(1);
+ $trace(ad,"ad.txt");
+ sfg zero {
+  fin8line=0;
+  wr=0;
+  ad=0;
+ }
+ sfg buf1 {
+  bufsel1=0;
+ }
+ sfg buf2 {
+  bufsel1=1;
+ }
+ sfg fin8 {
+  fin8line=1;
+  wr=0;
+  ad=0;
+ }
+ sfg proc8 {
+  fin8line=0;
+  wr=1;
+  ad=ad+1;
+ }
+ reg r, g, b : ns(8);
+ reg hsyncreg, oddevenreg : ns(1);
+ always {
+  r = datar;
+  g = datag;
+  b = datab;
+  hsyncreg = hsync;
+  oddevenreg = oddeven;
+  wrr=wr;
+  wrg=wr;
+  wrb=wr;
+  adr = ad;
+  adg = ad;
+  adb = ad;
+  dir=r;
+  dig=g;
+  dib=b;
+  $display("hsync=", hsync);
+  $display("r =",r,"  g=",g, "  b=",b);
+ }
+}
+fsm camif_ctrl(camif) {
+  initial s0;
+  state s1, s2, s3, s4, s0s1;
+   @s0 if (hsyncreg==1) then (zero,buf1,$trace) -> s1;
+     else (zero,buf1,$trace) -> s0;
+ @s1 if (oddevenreg==1) then (buf2,fin8,$trace) -> s2;
+   else (buf1,proc8,$trace) -> s1;
+   @s2 if (hsyncreg==1) then (buf2,fin8,$trace) -> s3;
+   else (buf2,fin8,$trace) -> s2;
+   @s3 if (oddevenreg==0) then (buf1,fin8,$trace)-> s4;
+   else (buf2,proc8,$trace) -> s3;
+   @s4 if (hsyncreg==1) then (buf1,fin8,$trace) -> s1;
+   else (buf1,fin8,$trace) -> s4;
+}
+ipblock ram1a(in address : ns(9); in wr,rd : ns(1);
+              in idata : ns(8); out odata : ns(8)) {
+  iptype "ram"; ipparm "wl=8"; ipparm "size=512"; }
+ipblock ram1b(in address : ns(9); in wr,rd : ns(1);
+              in idata : ns(8); out odata : ns(8)) {
+  iptype "ram"; ipparm "wl=8"; ipparm "size=512"; }
+dp b1 ( in bufsel1 : ns(1);
+         in a1w, a1r : ns(9); in w1, r1 : ns(1);
+         in di1 : ns(8); out do1 : ns(8))
+{
+   sig a1a, a1b : ns(9);
+   sig w1a, r1a, w1b, r1b : ns(1);
+   sig di1a, do1a, di1b, do1b : ns(8);
+   sig t_a1r : ns(9);
+   sig row, col : ns(3);
+   sig tab : ns(2);
+   always {
+  col = a1r[2]#a1r[1]#a1r[0];
+  row = a1r[5]#a1r[4]#a1r[3];
+  tab = a1r[7]#a1r[6];
+     t_a1r = col + (row<<6) + (tab<<3);
+ }
+   use ram1a(a1a, w1a, r1a, di1a, do1a);
+   use ram1b(a1b, w1b, r1b, di1b, do1b);
+   sfg run {
+      a1a = (bufsel1)? t_a1r : a1w;
+      w1a = (bufsel1)? 0 : w1;
+      r1a = (bufsel1)? r1 : 0;
+      di1a = (bufsel1)? 0 : di1;
+      a1b = (bufsel1)? a1w : t_a1r;
+      w1b = (bufsel1)? w1 : 0;
+      r1b = (bufsel1)? 0 : r1;
+      di1b = (bufsel1)? di1 : 0;
+      do1 = (bufsel1)? do1a : do1b;
+   $display ($cycle,"  bufsel1=",bufsel1,"  w1a=",w1a,"  di1a=",di1a,"  a1b=",a1b,"  w1b=",w1b,"  di1b=",di1b);
+   }
+}
+hardwired run_b1(b1) { run; }
+dp b1r : b1
+dp b1g : b1
+dp b1b : b1
+dp rgbyuv( in start_rgbyuv : ns(1);
+          out fin_rgbyuv : ns(1);
+           in dout1_r, dout1_g, dout1_b : ns(8);
+          out ad1r_r, ad1r_g, ad1r_b : ns(9);
+          out rd1_r, rd1_g, rd1_b : ns(1);
+          out din2_y1, din2_y2, din2_u, din2_v : ns(8);
+          out ad2w_y1, ad2w_y2, ad2w_u, ad2w_v : ns(9);
+          out wr2_y1, wr2_y2, wr2_u, wr2_v : ns(1) )
+{
+ reg r1, g1, b1, r2, g2, b2 : ns( 8);
+ sig r, g, b : ns( 8);
+ sig y1t, y2t, ut, vt, unb, vnb : tc(15);
+ reg y1, y2, u, v : tc(15);
+ reg curr_raddr : ns( 9);
+ reg curr_waddr : ns( 9);
+ reg fin, start : ns( 1);
+ sfg init {
+  curr_raddr = 0;
+  curr_waddr = 0;
+  $display("Inited, cycle: ", $cycle);
+ }
+ sfg clear_fin {
+  fin = 0;
+ }
+ sfg next_block {
+  curr_raddr = curr_raddr + 63;
+  curr_waddr = 0;
+ }
+ sfg flag {
+  fin_rgbyuv = fin;
+ }
+ sfg flag_no {
+  fin_rgbyuv = 0;
+ }
+ sfg wait_start {
+  start = start_rgbyuv;
+ }
+ sfg issue_read1 {
+  $display("Read, cycle: ", $cycle);
+  ad1r_r = curr_raddr;
+  ad1r_g = curr_raddr;
+  ad1r_b = curr_raddr;
+  rd1_r = 1;
+  rd1_g = 1;
+  rd1_b = 1;
+ }
+ sfg do_read1 {
+  r1 = dout1_r;
+  g1 = dout1_g;
+  b1 = dout1_b;
+ }
+ sfg issue_read2 {
+  $display("Read2, cycle: ", $cycle);
+  ad1r_r = curr_raddr+64;
+  ad1r_g = curr_raddr+64;
+  ad1r_b = curr_raddr+64;
+  rd1_r = 1;
+  rd1_g = 1;
+  rd1_b = 1;
+  curr_raddr = curr_raddr+1;
+ }
+ sfg do_read2 {
+  r2 = dout1_r;
+  g2 = dout1_g;
+  b2 = dout1_b;
+ }
+ sfg convert {
+  $display("Convert, cycle: ", $cycle);
+  r = (r1 + r2) >> 1;
+  g = (g1 + g2) >> 1;
+  b = (b1 + b2) >> 1;
+  y1t = 38*r1 + 75*g1 + 15*b1;
+  y2t = 38*r2 + 75*g2 + 15*b2;
+  ut = -22*r - 42*g + 64*b;
+  vt = 64*r - 54*g - 10*b;
+  y1 = y1t >> 7;
+  y2 = y2t >> 7;
+  unb = ut >> 7;
+  vnb = vt >> 7;
+  u = unb + 128;
+  v = vnb + 128;
+ }
+ sfg no_issue_read {
+  ad1r_r = 0;
+  ad1r_g = 0;
+  ad1r_b = 0;
+  rd1_r = 0;
+  rd1_g = 0;
+  rd1_b = 0;
+ }
+ sfg nowrite {
+  din2_y1 = 0;
+  din2_y2 = 0;
+  din2_u = 0;
+  din2_v = 0;
+  ad2w_y1 = 0;
+  ad2w_y2 = 0;
+  ad2w_u = 0;
+  ad2w_v = 0;
+  wr2_y1 = 0;
+  wr2_y2 = 0;
+  wr2_u = 0;
+  wr2_v = 0;
+ }
+ sfg write {
+  ad2w_y1 = curr_waddr;
+  ad2w_y2 = curr_waddr;
+  ad2w_u = curr_waddr;
+  ad2w_v = curr_waddr;
+  din2_y1 = y1;
+  din2_y2 = y2;
+  din2_u = u;
+  din2_v = v;
+  wr2_y1 = 1;
+  wr2_y2 = 1;
+  wr2_u = 1;
+  wr2_v = 1;
+  curr_waddr = curr_waddr + 1;
+  fin = curr_raddr[6] ? 1 : 0;
+ }
+ sfg clear_start {
+  start = 0;
+ }
+}
+fsm rgbyuv_ctl(rgbyuv) {
+ initial s0;
+ state s1, s2, s3, s4,s5,s6;
+ @s0 (init, flag, no_issue_read, nowrite) -> s1;
+ @s1 if (start) then (issue_read1, flag_no, nowrite, clear_fin) -> s2;
+  else (flag, no_issue_read, nowrite, wait_start) -> s1;
+ @s2 (clear_start, do_read1, issue_read2, flag, nowrite) -> s3;
+ @s3 (do_read2, issue_read1, flag, nowrite) -> s4;
+ @s4 if (fin) then (flag, no_issue_read, nowrite) -> s6;
+  else (do_read1, issue_read2, convert, nowrite, flag) -> s5;
+ @s5 (do_read2, issue_read1, write, flag) -> s4;
+ @s6 (next_block, flag, no_issue_read, nowrite) -> s1;
+}
+ipblock ram2a(in address : ns(6); in wr,rd : ns(1);
+             in idata : ns(8); out odata : ns(8)) {
+  iptype "ram"; ipparm "wl=8"; ipparm "size=64"; }
+ipblock ram2b(in address : ns(6); in wr,rd : ns(1);
+             in idata : ns(8); out odata : ns(8)) {
+  iptype "ram"; ipparm "wl=8"; ipparm "size=64"; }
+dp b2 ( in bufsel2 : ns(1);
+          in a2w, a2r : ns(6); in w2, r2 : ns(1);
+          in di2 : ns(8); out do2 : ns(8))
+{
+   sig a2a, a2b : ns(6);
+   sig w2a, r2a, w2b, r2b : ns(1);
+   sig di2a, do2a, di2b, do2b : ns(8);
+   use ram2a(a2a, w2a, r2a, di2a, do2a);
+   use ram2b(a2b, w2b, r2b, di2b, do2b);
+   sfg run {
+      a2a = (bufsel2)? a2r : a2w;
+      w2a = (bufsel2)? 0 : w2;
+      r2a = (bufsel2)? r2 : 0;
+      di2a = (bufsel2)? 0 : di2;
+      a2b = (bufsel2)? a2w : a2r;
+      w2b = (bufsel2)? w2 : 0;
+      r2b = (bufsel2)? 0 : r2;
+      di2b = (bufsel2)? di2 : 0;
+      do2 = (bufsel2)? do2a : do2b;
+$display ($cycle,"  bufsel2=",bufsel2,"  a2a=",a2a,"  w2a=",w2a,"  r2a=",r2a,"  di2a=",di2a,"  do2a=",do2a,
+                                      "  a2b=",a2b,"  w2b=",w2b,"  r2b=",r2b,"  di2b=",di2b,"  do2b=",do2b);
+   }
+}
+hardwired run_b2(b2) { run; }
+dp b2y1 : b2
+dp b2y2 : b2
+dp b2u : b2
+dp b2v : b2
+dp dct ( in start_dct : ns(1);
+          out fin_dct : ns(1);
+          in dout2 : ns(8);
+   out ad2r : ns(6);
+          out rd2 : ns(1);
+   out din3 : tc(15);
+          out ad3w : ns(6);
+          out wr3 : ns(1);
+          in dout5 : tc(15);
+          out din5 : tc(15);
+          out ad5 : ns(6);
+          out rd5 : ns(1);
+          out wr5 : ns(1) )
+{
+   reg bias : ns(9);
+   reg start : ns(1);
+   reg i : ns(3);
+   reg j : ns(3);
+   reg counter : ns(8);
+   reg m,n,p : ns(6);
+   reg t0, t1, t2, t3, t4, t5, t6, t7: tc(15);
+   sig temp0, temp1, temp2, temp3, temp4, temp5, temp6, temp7 : tc(15);
+   reg tout0, tout1, tout2, tout3, tout4, tout5, tout6, tout7 : tc(15);
+   sfg init
+   {
+      bias=256; ad2r=0; rd2=0, din3=0; ad3w=0; wr3=0; din5=0; ad5=0; rd5=0; wr5=0; fin_dct=0; counter=0; i=0; m=0; n=0; p=0; start=start_dct; j=i;
+   }
+   sfg clear_ad5
+   {
+      n=0;
+   }
+   sfg count1
+   {
+      counter=counter+1; m=m+1; ad2r=m; n=n+8; ad5=n; i=i+1; ad3w=0; j=i;
+   }
+   sfg count3
+   {
+      counter=counter+1; m=m+1; ad2r=m; n=n+9; ad5=n; i=i+1; ad3w=0; j=i;
+   }
+   sfg count2
+   {
+      counter=counter+1; p=p+1; ad3w=p; n=n+1; ad5=n; i=i+1; ad2r=0; j=i;
+   }
+   sfg temp
+   {
+      temp0 = 0;
+      temp1 = 0;
+      temp2 = 0;
+      temp3 = 0;
+      temp4 = 0;
+      temp5 = 0;
+      temp6 = 0;
+      temp7 = 0;
+   }
+   sfg dct_run
+   {
+      temp0=t0+t7-bias;
+      temp1=t1+t6-bias;
+      temp2=t2+t5-bias;
+      temp3=t3+t4-bias;
+      temp4=t3-t4;
+      temp5=t2-t5;
+      temp6=t1-t6;
+      temp7=t0-t7;
+      tout0=temp0+temp1+temp2+temp3;
+      tout4=temp0-temp1-temp2+temp3;
+      tout2=temp0-temp3+(((temp0+temp1-temp2-temp3)*23170)>>15);
+      tout6=temp0-temp3-(((temp0+temp1-temp2-temp3)*23170)>>15);
+      tout3=temp7-(((temp5+temp6)*23170)>>15)-(((temp4+temp5)*17734)>>15)-(((temp4+temp5-temp6-temp7)*12540)>>15);
+      tout5=temp7-(((temp5+temp6)*23170)>>15)+(((temp4+temp5)*17734)>>15)+(((temp4+temp5-temp6-temp7)*12540)>>15);
+      tout1=temp7+(((temp5+temp6)*23170)>>15)+(((temp6+temp7)*42813)>>15)+(((temp4+temp5-temp6-temp7)*12540)>>15);
+      tout7=temp7+(((temp5+temp6)*23170)>>15)-(((temp6+temp7)*42813)>>15)-(((temp4+temp5-temp6-temp7)*12540)>>15);
+   }
+   sfg change_bias
+   {
+      bias=0;
+   }
+   sfg rd_2
+   {
+      t7=dout2;
+      t6=t7;
+      t5=t6;
+      t4=t5;
+      t3=t4;
+      t2=t3;
+      t1=t2;
+      t0=t1;
+   }
+   sfg wr_5
+   {
+      din5=tout0;
+      tout0=tout1;
+      tout1=tout2;
+      tout2=tout3;
+      tout3=tout4;
+      tout4=tout5;
+      tout5=tout6;
+      tout6=tout7;
+   }
+   sfg rd_5
+   {
+      t0=dout5;
+      t1=t0;
+      t2=t1;
+      t3=t2;
+      t4=t3;
+      t5=t4;
+      t6=t5;
+      t7=t6;
+   }
+   sfg wr_3
+   {
+      din3=tout0;
+      tout0=tout1;
+      tout1=tout2;
+      tout2=tout3;
+      tout3=tout4;
+      tout4=tout5;
+      tout5=tout6;
+      tout6=tout7;
+   }
+   sfg s251
+   {
+      rd2=1; wr5=0; rd5=0; wr3=0; fin_dct=0; din3=0; din5=0;
+   }
+   sfg s252
+   {
+      rd2=1; wr5=1; rd5=0; wr3=0; fin_dct=0; din3=0;
+   }
+   sfg s253
+   {
+      rd2=0; wr5=1; rd5=0; wr3=0; fin_dct=0; din3=0;
+   }
+   sfg s531
+   {
+      rd2=0; wr5=0; rd5=1; wr3=0; fin_dct=0; din5=0; din3=0;
+   }
+   sfg s532
+   {
+      rd2=0; wr5=0; rd5=1; wr3=1; fin_dct=0; din5=0;
+   }
+   sfg s533
+   {
+      rd2=0; wr5=0; rd5=0; wr3=1; fin_dct=0; din5=0;
+   }
+   sfg sdct
+   {
+      rd2=0; wr5=0; rd5=0; wr3=0; fin_dct=0; din3=0; din5=0; ad2r=m; ad5=n; ad3w=p;
+   }
+   sfg sdct2
+   {
+      rd2=0; wr5=0; rd5=0; wr3=0; fin_dct=0; din3=0; din5=0; ad2r=m; ad5=n; ad3w=0; p=0;
+   }
+   sfg finish
+   {
+      rd2=0, wr5=0, rd5=0, wr3=0, fin_dct=1; din3=0; din5=0; ad3w=0; ad5=0; ad2r=0; start=start_dct;
+   }
+}
+fsm dct_ctl(dct) {
+  initial s0;
+  state s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15;
+  @s0 ( init,temp ) -> s1;
+  @s1 if (start<1) then ( init,temp ) ->s1;
+                else ( init,temp ) ->s2;
+  @s2 if (j<7) then ( rd_2, count1, s251,temp ) -> s2;
+                else ( rd_2, count1, s251,temp ) -> s9;
+  @s9 (dct_run, sdct ) -> s3;
+  @s3 if (j<7) then ( rd_2, wr_5, count1, s252,temp ) -> s3;
+                else if ( counter<63 ) then ( rd_2, wr_5, count3, s252,temp ) -> s9;
+                else ( rd_2, wr_5, count3, s252,temp ) -> s10;
+  @s10 (dct_run, sdct) -> s4;
+  @s4 if (j<7) then ( wr_5, count1, s253,temp ) -> s4;
+                else ( wr_5, count1, s253, change_bias,temp ) -> s13;
+  @s13 (clear_ad5, sdct, temp) ->s5;
+  @s5 if (j<7) then ( rd_5, count2, s531,temp) -> s5;
+                else ( rd_5, count2, s531,temp) ->s11;
+  @s11 (dct_run, sdct2) -> s6;
+  @s14 (dct_run, sdct) -> s6;
+  @s6 if (j<7) then ( rd_5, wr_3, count2, s532,temp ) -> s6;
+                else if ( counter<127 ) then ( rd_5, wr_3, count2, s532,temp ) -> s14;
+                else ( rd_5, wr_3, count2, s532,temp ) -> s12;
+  @s12 (dct_run, sdct) -> s7;
+  @s7 if (j<7) then ( wr_3, count2, s533,temp ) -> s7;
+                else ( wr_3, count2, s533,temp ) -> s8;
+  @s8 (finish, temp) ->s15;
+  @s15 if (start<1) then (finish, temp) -> s15;
+                else ( init, temp ) -> s2;
+}
+dp dcty1 : dct
+dp dcty2 : dct
+dp dctu : dct
+dp dctv : dct
+ipblock b5y1(in address : ns(6); in wr,rd : ns(1);
+             in idata : tc(12); out odata : tc(12)) {
+  iptype "ram"; ipparm "wl=12"; ipparm "size=64"; }
+ipblock b5y2(in address : ns(6); in wr,rd : ns(1);
+             in idata : tc(12); out odata : tc(12)) {
+  iptype "ram"; ipparm "wl=12"; ipparm "size=64"; }
+ipblock b5u (in address : ns(6); in wr,rd : ns(1);
+             in idata : tc(12); out odata : tc(12)) {
+  iptype "ram"; ipparm "wl=12"; ipparm "size=64"; }
+ipblock b5v (in address : ns(6); in wr,rd : ns(1);
+             in idata : tc(12); out odata : tc(12)) {
+  iptype "ram"; ipparm "wl=12"; ipparm "size=64"; }
+ipblock ram3a(in address : ns(6); in wr,rd : ns(1);
+              in idata : tc(15); out odata : tc(15)) {
+  iptype "ram"; ipparm "wl=15"; ipparm "size=64"; }
+ipblock ram3b(in address : ns(6); in wr,rd : ns(1);
+              in idata : tc(15); out odata : tc(15)) {
+  iptype "ram"; ipparm "wl=15"; ipparm "size=64"; }
+dp b3 ( in bufsel3 : ns(1);
+          in a3w, a3r : ns(6); in w3, r3 : ns(1);
+          in di3 : tc(15); out do3 : tc(15))
+{
+   sig a3a, a3b : ns(6);
+   sig w3a, r3a, w3b, r3b : ns(1);
+   sig di3a, do3a, di3b, do3b : tc(15);
+   use ram3a(a3a, w3a, r3a, di3a, do3a);
+   use ram3b(a3b, w3b, r3b, di3b, do3b);
+   sfg run {
+      a3a = (bufsel3)? a3r : a3w;
+      w3a = (bufsel3)? 0 : w3;
+      r3a = (bufsel3)? r3 : 0;
+      di3a = (bufsel3)? 0 : di3;
+      a3b = (bufsel3)? a3w : a3r;
+      w3b = (bufsel3)? w3 : 0;
+      r3b = (bufsel3)? 0 : r3;
+      di3b = (bufsel3)? di3 : 0;
+      do3 = (bufsel3)? do3a : do3b;
+$display ($cycle,"  bufsel3=",bufsel3,"  a3a=",a3a,"  w3a=",w3a,"  r3a=",r3a,"  di3a=",di3a,"  do3a=",do3a,
+                                      "  a3b=",a3b,"  w3b=",w3b,"  r3b=",r3b,"  di3b=",di3b,"  do3b=",do3b);
+   }
+}
+hardwired run_b3(b3) { run; }
+dp b3y1 : b3
+dp b3y2 : b3
+dp b3u : b3
+dp b3v : b3
+dp quantl( in start_quant : ns(1); out fin_quant : ns(1);
+            in din : tc(15);
+   out dout : tc(8);
+   out rd3, wr4 : ns(1);
+   out ad3, ad4 : ns(6))
+{
+ reg i:ns(6);
+ reg temp:tc(45);
+ reg start :ns(1);
+always {
+ start=start_quant;
+}
+lookup lqt : ns(15) = { 256,268,313,217,170,130,148,243,246,177,161,132,113,64,90,194,223,173,149,111,78,70,83,202,248,147,121,102,68,50, 80,203,227,134,84,62,60,47,73,192,217,107,72,69,64,63,85,205,154,85,74,73,73,79,116,271,206,116,119,128,132,188,266,543};
+lookup zigzag: ns(6)= {0, 2, 3, 9, 10, 20, 21, 35,
+                           1, 4, 8, 11, 19, 22, 34, 36,
+                           5, 7, 12, 18, 23, 33, 37, 48,
+                           6, 13, 17, 24, 32, 38, 47, 49,
+                          14, 16, 25, 31, 39, 46, 50, 57,
+                          15, 26, 30, 40, 45, 51, 56, 58,
+                          27, 29, 41, 44, 52, 55, 59, 62,
+                          28, 42, 43, 53, 54, 60, 61, 63 };
+sfg init
+{
+ temp=0;
+ i=0;
+ fin_quant=0;
+ dout=0;
+ rd3=0;
+ wr4=0;
+ ad3=0;
+ ad4=0;
+}
+sfg calculate_l{
+ temp=(((din<<15)*lqt(i))>>15);
+ dout=((temp+16384)>>15)&0xff;
+ i=i+1;
+ ad3=i;
+ ad4=zigzag(i);
+ rd3=1;
+ wr4=1;
+ fin_quant=0;
+}
+sfg fin{
+ fin_quant=1;
+ dout=0;
+ rd3=0;
+ wr4=0;
+ ad3=0;
+ ad4=0;
+}
+}
+fsm quantl_ctl(quantl) {
+   initial s0;
+   state s1,s2,s3;
+    @s0 (init) -> s1;
+    @s1 if (start==1) then (init) -> s2;
+  else (init) -> s1;
+ @s2 if (i<63) then (calculate_l)->s2;
+  else (calculate_l) -> s3;
+ @s3 if (start==0) then (fin) -> s3;
+  else (init) -> s2;
+}
+dp quanty1 : quantl
+dp quanty2 : quantl
+dp quantc ( in start_quant : ns(1); out fin_quant : ns(1);
+            in din : tc(15);
+   out dout : tc(8);
+   out rd3, wr4 : ns(1);
+   out ad3, ad4 : ns(6)) {
+reg i:ns(6);
+reg temp:tc(45);
+reg start :ns(1);
+always {start=start_quant;}
+lookup cqt : ns(15) ={240,164,130,74,41,52,76,149,164,101,86,38,29,37,55,108,130,86,42,26,31,40,58,114,74,38,26,29,35,44,65,127,41,29,31, 35,41,52,76,149,52,37,40,44,52,67,97,190,76,55,58,65,76,97,141,277,149,108,114,127,149,190,277,543};
+lookup zigzag: ns(6)= {0, 2, 3, 9, 10, 20, 21, 35,
+                           1, 4, 8, 11, 19, 22, 34, 36,
+                           5, 7, 12, 18, 23, 33, 37, 48,
+                           6, 13, 17, 24, 32, 38, 47, 49,
+                          14, 16, 25, 31, 39, 46, 50, 57,
+                          15, 26, 30, 40, 45, 51, 56, 58,
+                          27, 29, 41, 44, 52, 55, 59, 62,
+                          28, 42, 43, 53, 54, 60, 61, 63 };
+sfg init
+{
+temp=0;
+i=0;
+fin_quant=0;
+dout=0;
+rd3=0;
+wr4=0;
+ad3=0;
+ad4=0;
+}
+sfg calculate_c{
+temp=(((din<<15)*cqt(i))>>15);
+dout=((temp+16384)>>15)&0xff;
+i=i+1;
+ad3=i;
+ad4=zigzag(i);
+rd3=1;
+wr4=1;
+fin_quant=0;
+$display("quant_out:  ",dout);
+}
+sfg fin{
+fin_quant=1;
+dout=0;
+rd3=0;
+wr4=0;
+ad3=0;
+ad4=0;
+}
+}
+fsm quantc_ctl(quantc) {
+    initial s0;
+    state s1,s2,s3;
+    @s0 (init) -> s1;
+    @s1 if(start==1) then (init) -> s2;
+     else (init) -> s1;
+ @s2 if (i<63) then (calculate_c)->s2;
+  else (calculate_c)-> s3;
+ @s3 if (start==0) then (fin) -> s3;
+  else (init) -> s2;
+}
+dp quantu : quantc
+dp quantv : quantc
+ipblock ram4a(in address : ns(6); in wr,rd : ns(1);
+              in idata : tc(8); out odata : tc(8)) {
+  iptype "ram"; ipparm "wl=8"; ipparm "size=64"; }
+ipblock ram4b(in address : ns(6); in wr,rd : ns(1);
+              in idata : tc(8); out odata : tc(8)) {
+  iptype "ram"; ipparm "wl=8"; ipparm "size=64"; }
+dp b4 ( in bufsel4 : ns(1);
+          in a4w, a4r : ns(6); in w4, r4 : ns(1);
+          in di4 : tc(8); out do4 : tc(8))
+{
+   sig a4a, a4b : ns(6);
+   sig w4a, r4a, w4b, r4b : ns(1);
+   sig di4a, do4a, di4b, do4b : tc(8);
+   use ram4a(a4a, w4a, r4a, di4a, do4a);
+   use ram4b(a4b, w4b, r4b, di4b, do4b);
+   sfg run {
+      a4a = (bufsel4)? a4r : a4w;
+      w4a = (bufsel4)? 0 : w4;
+      r4a = (bufsel4)? r4 : 0;
+      di4a = (bufsel4)? 0 : di4;
+      a4b = (bufsel4)? a4w : a4r;
+      w4b = (bufsel4)? w4 : 0;
+      r4b = (bufsel4)? 0 : r4;
+      di4b = (bufsel4)? di4 : 0;
+      do4 = (bufsel4)? do4a : do4b;
+$display ($cycle,"  bufsel4=",bufsel4,"  a4a=",a4a,"  w4a=",w4a,"  r4a=",r4a,"  di4a=",di4a,"  do4a=",do4a,
+                                      "  a4b=",a4b,"  w4b=",w4b,"  r4b=",r4b,"  di4b=",di4b,"  do4b=",do4b);
+   }
+}
+hardwired run_b4(b4) { run; }
+dp b4y1 : b4
+dp b4y2 : b4
+dp b4u : b4
+dp b4v : b4
+$option "vcd"
+dp magnitude_dp( in v:ns(7); out mag:ns(3)){
+ sfg do_always{
+  mag = ( (v==0) ? 0 : (v[1:6] == 0 ? 1 : (v[2:6] == 0 ? 2 : (v[3:6] == 0 ? 3 : (v[4:6] == 0 ? 4 : (v[5:6] == 0 ? 5 : (v[6] == 0 ? 6 : 7)))))));
+ }
+}
+hardwired magnitude_hw(magnitude_dp){ do_always;}
+dp huf_dp(in start_huf : ns(1); out fin_huf : ns(1);
+  in do4_y1:tc(8); in do4_y2:tc(8);in do4_u:tc(8);in do4_v:tc(8);
+  out a4r_y1, a4r_y2, a4r_u, a4r_v : ns(6);
+    out r4_y1, r4_y2, r4_u, r4_v : ns(1);
+  out outen : ns(1);
+           out outval : ns(16);
+           out outnb : ns(5))
+{
+ reg cnt:ns(7);
+ reg pix:tc(8);
+ reg level:tc(8);
+ reg level2:tc(8);
+ reg lpred:ns(8);
+ reg y1:ns(1);
+ reg y2:ns(1);
+ reg u:ns(1);
+ reg v:ns(1);
+ reg run:ns(6);
+ reg tablenb: ns(8);
+ reg tablenb2: ns(8);
+ reg e0: ns(16);
+ reg e1: ns(7);
+ reg write_next:ns(1);
+ reg cnt_blok_16:ns(3);
+ reg blok:ns(2);
+ reg pred_y:tc(8);
+ reg pred_u:tc(8);
+ reg pred_v:tc(8);
+ reg start :ns(1);
+ sig len:ns(4);
+ lookup ldht_val : ns(9) = {0, 2, 3, 4, 5, 6, 14, 30, 62, 126, 254, 510};
+ lookup ldht_nb : ns(4) = {2, 3, 3, 3, 3, 3, 4, 5, 6, 7, 8, 9};
+ lookup cdht_val : ns(11) = {0, 1, 2, 6, 14, 30, 62, 126, 254, 510, 1022, 2046};
+ lookup cdht_nb : ns(4) = {2, 2, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
+ lookup laht_val : ns(16) = {10, 0, 1, 4, 11, 26, 120, 248, 1014, 65410, 65411, 0, 0, 0, 0, 0, 0, 12, 27, 121, 502, 2038, 65412, 65413, 65414,
+    65415, 65416, 0, 0, 0, 0, 0, 0, 28, 249, 1015, 4084, 65417, 65418, 65419, 65420, 65421, 65422, 0, 0, 0, 0, 0, 0, 58,
+    503, 4085, 65423, 65424, 65425, 65426, 65427, 65428, 65429, 0, 0, 0, 0, 0, 0, 59, 1016, 65430, 65431, 65432, 65433, 65434,
+    65435, 65436, 65437, 0, 0, 0, 0, 0, 0, 122, 2039, 65438, 65439, 65440, 65441, 65442, 65443, 65444, 65445, 0, 0, 0, 0, 0, 0,
+    123, 4086, 65446, 65447, 65448, 65449, 65450, 65451, 65452, 65453, 0, 0, 0, 0, 0, 0, 250, 4087, 65454, 65455, 65456, 65457,
+    65458, 65459, 65460, 65461, 0, 0, 0, 0, 0, 0, 504, 32704, 65462, 65463, 65464, 65465, 65466, 65467, 65468, 65469, 0, 0, 0, 0,
+    0, 0, 505, 65470, 65471, 65472, 65473, 65474, 65475, 65476, 65477, 65478, 0, 0, 0, 0, 0, 0, 506, 65479, 65480, 65481, 65482,
+    65483, 65484, 65485, 65486, 65487, 0, 0, 0, 0, 0, 0, 1017, 65488, 65489, 65490, 65491, 65492, 65493, 65494, 65495, 65496, 0,
+    0, 0, 0, 0, 0, 1018, 65497, 65498, 65499, 65500, 65501, 65502, 65503, 65504, 65505, 0, 0, 0, 0, 0, 0, 2040, 65506, 65507,
+    65508, 65509, 65510, 65511, 65512, 65513, 65514, 0, 0, 0, 0, 0, 0, 65515, 65516, 65517, 65518, 65519, 65520, 65521, 65522,
+    65523, 65524, 0, 0, 0, 0, 0, 2041, 65525, 65526, 65527, 65528, 65529, 65530, 65531, 65532, 65533, 65534, 0, 0, 0, 0, 0};
+ lookup laht_nb : ns(5) = {4, 2, 2, 3, 4, 5, 7, 8, 10, 16, 16, 0, 0, 0, 0, 0, 0, 4, 5, 7, 9, 11, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 5, 8, 10, 12,
+    16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 6, 9, 12, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 6, 10, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 7, 11, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 7, 12, 16, 16, 16, 16, 16, 16,
+    16, 16, 0, 0, 0, 0, 0, 0, 8, 12, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 9, 15, 16, 16, 16, 16, 16, 16, 16, 16,
+    0, 0, 0, 0, 0, 0, 9, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 9, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0,
+    0, 0, 0, 10, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 10, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0,
+    11, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 11, 16, 16,
+    16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0};
+ lookup caht_val : ns(16) ={0, 1, 4, 10, 24, 25, 56, 120, 500, 1014, 4084, 0, 0, 0, 0, 0, 0, 11, 57, 246, 501, 2038, 4085, 65416, 65417, 65418, 65419,
+    0, 0, 0, 0, 0, 0, 26, 247, 1015, 4086, 32706, 65420, 65421, 65422, 65423, 65424, 0, 0, 0, 0, 0, 0, 27, 248, 1016, 4087, 65425,
+    65426, 65427, 65428, 65429, 65430, 0, 0, 0, 0, 0, 0, 58, 502, 65431, 65432, 65433, 65434, 65435, 65436, 65437, 65438, 0, 0, 0,
+    0, 0, 0, 59, 1017, 65439, 65440, 65441, 65442, 65443, 65444, 65445, 65446, 0, 0, 0, 0, 0, 0, 121, 2039, 65447, 65448, 65449,
+    65450, 65451, 65452, 65453, 65454, 0, 0, 0, 0, 0, 0, 122, 2040, 65455, 65456, 65457, 65458, 65459, 65460, 65461, 65462, 0, 0,
+    0, 0, 0, 0, 249, 65463, 65464, 65465, 65466, 65467, 65468, 65469, 65470, 65471, 0, 0, 0, 0, 0, 0, 503, 65472, 65473, 65474,
+    65475, 65476, 65477, 65478, 65479, 65480, 0, 0, 0, 0, 0, 0, 504, 65481, 65482, 65483, 65484, 65485, 65486, 65487, 65488, 65489,
+    0, 0, 0, 0, 0, 0, 505, 65490, 65491, 65492, 65493, 65494, 65495, 65496, 65497, 65498, 0, 0, 0, 0, 0, 0, 506, 65499, 65500,
+    65501, 65502, 65503, 65504, 65505, 65506, 65507, 0, 0, 0, 0, 0, 0, 2041, 65508, 65509, 65510, 65511, 65512, 65513, 65514, 65515,
+    65516, 0, 0, 0, 0, 0, 0, 16352, 65517, 65518, 65519, 65520, 65521, 65522, 65523, 65524, 65525, 0, 0, 0, 0, 0, 1018, 32707,
+    65526, 65527, 65528, 65529, 65530, 65531, 65532, 65533, 65534, 0, 0, 0, 0, 0};
+ lookup caht_nb : ns(5) ={2, 2, 3, 4, 5, 7, 8, 10, 16, 16, 0, 0, 0, 0, 0, 0, 4, 5, 7, 9, 11, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 5, 8, 10, 12, 16,
+    16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 6, 9, 12, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 6, 10, 16, 16, 16, 16, 16, 16,
+    16, 16, 0, 0, 0, 0, 0, 0, 7, 11, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 7, 12, 16, 16, 16, 16, 16, 16, 16, 16, 0,
+    0, 0, 0, 0, 0, 8, 12, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 9, 15, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0,
+    0, 0, 9, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 9, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 10,
+    16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 10, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 11, 16, 16,
+    16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 11, 16, 16, 16, 16, 16,
+    16, 16, 16, 16, 16, 0, 0, 0, 0, 0};
+ use magnitude_dp(level[0:6], len);
+ sfg pred_init{
+  pred_y = 0;
+  pred_u = 0;
+  pred_v = 0;
+}
+ sfg init{
+  cnt = 0;
+  run = 0;
+  fin_huf = 0;
+  cnt_blok_16 = 0;
+ }
+ sfg blok_init{
+  blok == 0;
+ }
+ sfg blok_write{
+  y1 = (blok == 0) ? 1: 0;
+  y2 = (blok == 1) ? 1: 0;
+  u = (blok == 2) ? 1: 0;
+  v = (blok == 3) ? 1: 0;
+ }
+ sfg blok_plus{
+  blok = blok + 1;
+ }
+ sfg read{
+  a4r_y1 = cnt;
+  a4r_y2 = cnt;
+  a4r_u = cnt;
+  a4r_v = cnt;
+  r4_y1 = (y1==1) ? 1 :0;
+  r4_y2 = (y2==1) ? 1 :0;
+  r4_u = (u==1) ? 1 :0;
+  r4_v = (v==1) ? 1 :0;
+  pix = ((y1 == 1) ? do4_y1 : (y2 == 1) ? do4_y2 : (u == 1) ? do4_u : do4_v);
+ }
+ sfg read_not{
+  a4r_y1 = 0;
+  a4r_y2 = 0;
+  a4r_u = 0;
+  a4r_v = 0;
+  r4_y1 = 0;
+  r4_y2 = 0;
+  r4_u = 0;
+  r4_v = 0;
+ }
+ sfg flags{
+  fin_huf = 0;
+ }
+ sfg fin{
+  fin_huf = 1;
+ }
+ sfg write_not{
+  outen = 0;
+  outval = 0;
+  outnb = 0;
+ }
+ sfg dc_tablenb{
+  tablenb = len;
+  tablenb2 = tablenb;
+ }
+ sfg init_dc{
+  level = (pix >= 0) ? (pix - (((y1 == 1)|(y2 == 1)) ? pred_y : (u == 1) ? pred_u : pred_v)) : (128|(~(pix - ((((y1 == 1)|(y2 == 1)) ? pred_y : (u == 1) ? pred_u : pred_v) + 1))));
+  pred_y = (((y1 == 1)|(y2 == 1)) ? pix : pred_y);
+  pred_u = (u == 1) ? pix : pred_u;
+  pred_v = (v == 1) ? pix : pred_v;
+ }
+ sfg init_ac{
+  level =(pix >= 0) ? pix : (128 | (~(pix - 1 )));
+  level2 = level;
+ }
+ sfg always_s2{
+  cnt = cnt + 1;
+  fin_huf = 0;
+ }
+ sfg table{
+  e0 = ((cnt == 1) ? (((y1 == 1) | (y2 == 1)) ? ldht_val(tablenb) : cdht_val(tablenb)) : (((y1 == 1) | (y2 == 1)) ? laht_val(tablenb) : caht_val(tablenb)));
+  e1 = ((cnt == 1) ? (((y1 == 1) | (y2 == 1)) ? ldht_nb(tablenb) : cdht_nb(tablenb)) : (((y1 == 1) | (y2 == 1)) ? laht_nb(tablenb) : caht_nb(tablenb)));
+ }
+ sfg ac_tablenb{
+  tablenb = ((run << 4) | len);
+  tablenb2 = tablenb[0:3];
+  write_next = 1;
+  run = 0;
+ }
+ sfg ac_0{
+  run = run + 1;
+  tablenb2 = tablenb[0:3];
+  write_next = 0;
+ }
+ sfg ac_16{
+  run = run -15;
+  cnt_blok_16 = cnt_blok_16 + 1;
+  write_next = 0;
+ }
+ sfg ac_end{
+  tablenb2 = tablenb[0:3];
+ }
+ sfg write_end{
+  outen = 1;
+  outval = ((y1 == 1) | (y2 == 1)) ? laht_val(0) : caht_val(0);
+  outnb = ((y1 == 1) | (y2 == 1)) ? laht_nb(0) : caht_nb(0);
+ }
+ sfg write_0{
+  outen = 1;
+  outval =((y1 == 1) | (y2 == 1)) ? laht_val(16) : caht_val(16);
+  outnb =((y1 == 1) | (y2 == 1)) ? laht_nb(16) : caht_nb(16);
+  cnt_blok_16 = cnt_blok_16-1;
+ }
+ sfg write_1{
+  outen = 1;
+  outval = e0;
+  outnb = e1;
+ }
+ sfg write_2{
+  outen = 1;
+  outval = (level2 > 0) ? level2 : ((~(level2[0:6]))&(~(127<<tablenb2)));
+  outnb = tablenb2;
+ }
+ sfg write{
+  fin_huf = 0;
+ }
+ sfg no_out{
+  fin_huf = 1;
+  outen = 0;
+  outval = 0;
+  outnb = 0;
+  a4r_y1 = 0;
+  a4r_y2 = 0;
+  a4r_u = 0;
+  a4r_v = 0;
+  r4_y1 = 0;
+  r4_y2 = 0;
+  r4_u = 0;
+  r4_v = 0;
+ }
+ sfg disp{
+  $display("Klok en count: ",$cycle,"  ",$dec, cnt,"  Readpix, level en level2:",pix," ",level," ",level2,"  eo, e1 en outval: ",e0," ",e1," ",outval," ", outen);
+ }
+ sfg disp1{
+  $display("Klok en count: ",1," ",$cycle);
+ }
+ sfg disp2{
+  $display("Klok en count: ",2," ",$cycle);
+ }
+ sfg disp3{
+  $display("Klok en count: ",3," ",$cycle);
+ }
+ sfg disp4{
+  $display("Klok en count: ",4," ",$cycle);
+ }
+ sfg disp5{
+  $display("Klok en count: ",5," ",$cycle);
+ }
+ sfg disp6{
+  $display("Klok en count: ",6," ",$cycle);
+ }
+ sfg disp7{
+  $display("Klok en count: ",7," ",$cycle);
+ }
+ always {
+  start=start_huf;
+ }
+}
+fsm huf_fsm(huf_dp){
+ initial s0;
+ state s1, s2, s3, s4, s5, s6, s7;
+ @s0 (init, pred_init, write_not, read_not ,disp) ->s7;
+ @s1 if (cnt == 0) then (read, write_not, flags, disp) ->s2;
+  else if(cnt == 1) then (read, dc_tablenb, write_not, flags, disp) ->s2;
+  else if(cnt == 2 & level!=0) then (read, ac_tablenb, write_not, flags, disp) ->s4;
+  else if(cnt == 2) then (read, ac_0, write_not, flags, disp) ->s4;
+  else if(cnt == 64 & write_next & level!=0) then (read_not, ac_tablenb, write_not, flags, disp) ->s4;
+  else if(cnt == 64 & write_next) then (read_not, ac_0, write_not, flags, disp) ->s4;
+  else if(cnt == 64 & level != 0) then (read_not, ac_tablenb, write_not, flags, disp1) ->s2;
+  else if(cnt == 64) then (read_not, ac_0, write_not, flags, disp) ->s2;
+  else if(cnt == 65 & write_next) then (read_not, ac_end, write_not, flags, disp3) ->s4;
+  else if(cnt == 65) then (read_not, write_not, flags, disp5) ->s4;
+  else if(write_next & level!=0) then (read, ac_tablenb, write_not, flags, disp) ->s4;
+  else if(write_next) then (read, ac_0, write_not, flags, disp) ->s4;
+  else if(level != 0) then (read, ac_tablenb, write_not, flags, disp) ->s2;
+  else if(run < 15) then (read, ac_0, write_not, flags, disp) ->s2;
+        else (read, ac_16, write_not, flags, disp) ->s2;
+ @s2 if(cnt == 0) then (read_not, init_dc, write_not, always_s2, disp) ->s1;
+  else if(cnt == 1 & level ==0) then (read_not, init_ac, write_not, always_s2, disp) ->s1;
+  else if(cnt == 1) then (read_not, init_ac, table, write_not, always_s2, disp) ->s1;
+  else if(level == 0) then (read_not, init_ac, write_not, always_s2, disp) ->s1;
+      else (read_not, init_ac, table, write_not, always_s2, disp2) ->s1;
+ @s3 if(start == 1) then (init, write_not, read_not, disp, blok_init, blok_write, blok_plus) ->s1;
+    else (no_out, disp) ->s3;
+ @s4 if(cnt == 65 & write_next==0) then (read_not, write_end, write, disp) ->s6;
+    else if(cnt_blok_16 > 0) then (read_not, write_0, write) ->s4;
+    else(read_not, write_1, write, disp4) ->s5;
+ @s5 if(cnt == 65) then(read_not, write_2, write, disp5) ->s6;
+    else(read_not, write_2, write, disp) ->s2;
+ @s6 if(blok == 0) then(read_not, write_not, fin) ->s3;
+    else(read_not, write_not, init, blok_write, blok_plus) ->s1;
+ @s7 if(start ==1) then (init, write_not, read_not, disp, blok_init, blok_write, blok_plus) ->s1;
+    else(flags, read_not, write_not) ->s7;
+}
+dp huftob6 ( in start_fdump:ns(1);
+  in outen : ns(1);
+     in outval : ns(16);
+     in outnb : ns(5);
+     out di6 : ns(32);
+     out wr6 : ns(1);
+     out adw6 : ns(10)
+     )
+ {
+ reg start_fdump_reg:ns(1);
+ reg outen_reg : ns(1);
+ reg wr6_reg : ns(1);
+  reg writetob6 : ns(32);
+   reg n : ns(6);
+  reg val : ns(16);
+  reg bb : ns(32);
+        reg nbb : ns (6);
+  reg add_count : ns(10);
+  always
+  {
+  start_fdump_reg=start_fdump;
+  outen_reg = outen;
+  n = outnb;
+  val = outval;
+  wr6 = wr6_reg;
+                di6 = writetob6;
+  adw6 = add_count;
+  }
+ sfg buffertobb {
+  bb = bb | (val << (32 - nbb - n));
+  nbb = nbb + n;
+  writetob6 = 0;
+  wr6_reg = 0;
+  add_count = (wr6_reg==1) ?add_count + 1 : add_count;
+  }
+ sfg write_b6 {
+  writetob6 = bb | (val >> (nbb + n - 32));
+                wr6_reg = 1 ;
+  add_count = (wr6_reg==1) ?add_count + 1 : add_count;
+  bb = val << (64 -nbb -n);
+  nbb = nbb + n - 32 ;
+  }
+ sfg wait {
+  bb = bb;
+  nbb = nbb;
+  writetob6 = 0;
+  wr6_reg = 0;
+  add_count = (wr6_reg==1) ?add_count + 1 : add_count;
+  }
+      sfg trail{
+             writetob6=bb;
+             add_count = (wr6_reg==1) ?add_count + 1 : add_count;
+             wr6_reg = 1 ;
+}
+ sfg init{
+  bb = 0;
+  nbb = 0;
+  writetob6 = 0;
+  wr6_reg = 0;
+  add_count = 0;}
+}
+fsm huftob6_ctl(huftob6)
+ { initial s0;
+         state s1,s2;
+         @s0 (init)->s1;
+         @s1 if (outen_reg == 1)then(buffertobb) -> s1;
+            else if((nbb+n) > 32) then(write_b6) ->s1;
+            else if(start_fdump_reg == 1) then (trail)-> s0;
+            else (wait)->s1;
+}
+dp fdump_out(
+             in start_fdump : ns(1);
+             in do6 : ns(32);
+             out add_r6: ns(10);
+             out rd6 : ns(1);
+             out stream : ns(8))
+{
+lookup header : ns(8)={
+255, 216, 255, 224, 0, 16, 74, 70, 73, 70, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 255, 219, 0, 67, 0, 16, 12, 11, 10, 12, 14, 14, 13, 14, 16, 24, 19, 16, 17, 18, 24, 22, 22, 24, 26, 40,
+ 51, 58, 40, 29, 37, 35, 49, 72, 64, 55, 56, 51, 57, 60, 61, 55, 69, 87, 68, 64, 78, 92, 95, 87, 81, 109, 80, 56, 62, 103, 104, 103, 98, 112, 121, 113, 77, 92, 120, 100, 103,
+ 101, 99, 255, 219, 0, 67, 1, 17, 18, 18, 24, 21, 24, 47, 26, 26, 47, 99, 66, 56, 66, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99,
+ 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 255, 192, 0, 17, 8, 0, 64, 0, 64, 3, 1, 33, 0, 2, 17, 1, 3,
+17, 1, 255, 196, 0, 31, 0, 0, 1, 5, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 255, 196, 0, 181, 16, 0, 2, 1, 3, 3, 2, 4, 3, 5, 5, 4, 4, 0,
+ 0, 1, 125, 1, 2, 3, 0, 4, 17, 5, 18, 33, 49, 65, 6, 19, 81, 97, 7, 34, 113, 20, 50, 129, 145, 161, 8, 35, 66, 177, 193, 21, 82, 209, 240, 36, 51, 98, 114, 130, 9, 10, 22, 23,
+ 24, 25, 26, 37, 38, 39, 40, 41, 42, 52, 53, 54, 55, 56, 57, 58, 67, 68, 69, 70, 71, 72, 73, 74, 83, 84, 85, 86, 87, 88, 89, 90, 99, 100, 101, 102, 103, 104, 105, 106, 115,
+ 116, 117, 118, 119, 120, 121, 122, 131, 132, 133, 134, 135, 136, 137, 138, 146, 147, 148, 149, 150, 151, 152, 153, 154, 162, 163, 164, 165, 166, 167, 168, 169, 170, 178, 179,
+180, 181, 182, 183, 184, 185, 186, 194, 195, 196, 197, 198, 199, 200, 201, 202, 210, 211, 212, 213, 214, 215, 216, 217, 218, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234,
+ 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 255, 196, 0, 31, 1, 0, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 255, 196, 0, 181,
+17, 0, 2, 1, 2, 4, 4, 3, 4, 7, 5, 4, 4, 0, 1, 2, 119, 0, 1, 2, 3, 17, 4, 5, 33, 49, 6, 18, 65, 81, 7, 97, 113, 19, 34, 50, 129, 8, 20, 66, 145, 161, 177, 193, 9, 35, 51, 82,
+ 240, 21, 98, 114, 209, 10, 22, 36, 52, 225, 37, 241, 23, 24, 25, 26, 38, 39, 40, 41, 42, 53, 54, 55, 56, 57, 58, 67, 68, 69, 70, 71, 72, 73, 74, 83, 84, 85, 86, 87, 88, 89,
+ 90, 99, 100, 101, 102, 103, 104, 105, 106, 115, 116, 117, 118, 119, 120, 121, 122, 130, 131, 132, 133, 134, 135, 136, 137, 138, 146, 147, 148, 149, 150, 151, 152, 153, 154,
+ 162, 163, 164, 165, 166, 167, 168, 169, 170, 178, 179, 180, 181, 182, 183, 184, 185, 186, 194, 195, 196, 197, 198, 199, 200, 201, 202, 210, 211, 212, 213, 214, 215, 216, 217,
+218, 226, 227, 228, 229, 230, 231, 232, 233, 234, 242, 243, 244, 245, 246, 247, 248, 249, 250, 255, 218, 0, 12, 3, 1, 0, 2, 17, 3, 17, 0, 63, 0} ;
+reg do6_reg :ns(32);
+reg i :ns(10);
+reg rd6_reg:ns(1);
+reg start_fdump_reg:ns(1);
+reg add_count:ns(10);
+reg stream_reg:ns(8);
+always
+{ rd6=rd6_reg;
+  start_fdump_reg=start_fdump;
+  add_r6=add_count;
+  stream=stream_reg;
+}
+sfg init {
+        add_count=0;
+        rd6_reg=0;
+        stream_reg=0;
+        i=0;
+}
+sfg dump{
+          stream_reg = header(i);
+          i = i + 1;
+          rd6_reg=0;
+}
+sfg dumplast{stream_reg=header(i);
+             i=i+1;
+             rd6_reg=1;
+}
+sfg dump_add0{
+         stream =0;
+}
+sfg read_b6 {
+    rd6_reg=1;
+}
+sfg dump1{stream_reg=do6_reg[31:24];
+}
+sfg dump2{stream_reg=do6_reg[23:16];
+}
+sfg dump3{stream_reg=do6_reg[15:8];
+}
+sfg dump4{stream_reg=do6_reg[7:0];
+}
+sfg adr6_add{add_count=add_count+1;}
+}
+fsm fdump_ctl(fdump_out)
+{initial s0;
+ state s1,s2,s3,s4,s5,s6;
+ @s0 (init) ->s1;
+ @s1 if(start_fdump_reg==1) then(init) ->s2;
+     else(init)->s0;
+ @s2 if(i<622) then (dump)->s2;
+      else (dumplast) ->s3;
+ @s3 if (stream_reg==0xff) then (dump_add0)->s4;
+     else (dump1)->s4;
+ @s4 if (stream_reg==0xff) then (dump_add0)->s5;
+     else (dump2)->s5;
+ @s5 if (stream_reg==0xff) then (dump_add0)->s6;
+     else (dump3)->s6;
+ @s6 if (stream_reg==0xff) then (dump_add0,adr6_add)->s3;
+     else if (start_fdump_reg==0) then (init)->s0;
+     else (dump4,adr6_add)->s3;
+}
+dp fdump( in start_fdump : ns(1);
+           out ad6 : ns(10);
+           out wr6 : ns(1);
+           out rd6 : ns(1);
+           out di6 : ns(32);
+           out stream : ns(8);
+            in do6 : ns(32);
+            in outen : ns(1);
+            in outval : ns(16);
+            in outnb : ns(5))
+ { sig adw6:ns(10);
+        sig add_r6:ns(10);
+ use huftob6(start_fdump, outen ,outval ,outnb,di6,wr6,adw6 );
+        use fdump_out(start_fdump,do6 ,add_r6,rd6,stream);
+ sfg run{
+  ad6 = start_fdump ? add_r6 : adw6;
+ }
+}
+hardwired fdump_ctl(fdump){run;}
+ipblock b6(in address : ns(10); in wr,rd : ns(1);
+             in idata : ns(32); out odata : ns(32)) {
+  iptype "ram"; ipparm "wl=32"; ipparm "size=1024"; }
+dp jpeg ( in datar : ns(8);
+               in datag : ns(8);
+               in datab : ns(8);
+               in vsync : ns(1);
+               in hsync : ns(1);
+               in oddeven : ns(1);
+               out debug1 : ns(1);
+               out debug2 : ns(1);
+               out debug3 : ns(1);
+               out debug4 : ns(1);
+               out debug5 : ns(1);
+               out debug6 : ns(1);
+               out debug7 : ns(1);
+               out debug8 : ns(1);
+               out stream : ns(8))
+{
+  sig finish_8line, finish_rgbyuv, finish_dct_y1, finish_quant_y1, finish_huf : ns(1);
+  sig bufsel1, bufsel2, bufsel3, bufsel4 : ns(1);
+  sig start_rgbyuv, start_dct, start_quant, start_huf, start_fdump : ns(1);
+  sig di1_r, di1_g, di1_b : ns(8);
+  sig a1w_r, a1w_g, a1w_b : ns(9);
+  sig w1_r, w1_g, w1_b : ns(1);
+  use camif ( datar, datag, datab, vsync, hsync, oddeven,
+              bufsel1, finish_8line, a1w_r, a1w_g, a1w_b, w1_r, w1_g, w1_b, di1_r, di1_g, di1_b );
+  use main ( finish_8line, finish_rgbyuv, finish_dct_y1, finish_quant_y1, finish_huf,
+             bufsel2, bufsel3, bufsel4,
+             start_rgbyuv, start_dct, start_quant, start_huf, start_fdump );
+  sig do1_r, do1_g, do1_b : ns(8);
+  sig a1r_r, a1r_g, a1r_b : ns(9);
+  sig r1_r, r1_g, r1_b : ns(1);
+  use b1r ( bufsel1, a1w_r, a1r_r, w1_r, r1_r, di1_r, do1_r );
+  use b1g ( bufsel1, a1w_g, a1r_g, w1_g, r1_g, di1_g, do1_g );
+  use b1b ( bufsel1, a1w_b, a1r_b, w1_b, r1_b, di1_b, do1_b );
+  sig di2_y1, di2_y2, di2_u, di2_v : ns(8);
+  sig a2w_y1, a2w_y2, a2w_u, a2w_v : ns(6);
+  sig w2_y1, w2_y2, w2_u, w2_v : ns(1);
+  use rgbyuv( start_rgbyuv, finish_rgbyuv,
+              do1_r, do1_g, do1_b,
+              a1r_r, a1r_g, a1r_b,
+              r1_r, r1_g, r1_b,
+              di2_y1, di2_y2, di2_u, di2_v,
+              a2w_y1, a2w_y2, a2w_u, a2w_v,
+              w2_y1, w2_y2, w2_u, w2_v );
+  sig a2r_y1, a2r_y2, a2r_u, a2r_v : ns(6);
+  sig r2_y1, r2_y2, r2_u, r2_v : ns(1);
+  sig do2_y1, do2_y2, do2_u, do2_v : ns(15);
+  use b2y1 ( bufsel2, a2w_y1, a2r_y1, w2_y1, r2_y1, di2_y1, do2_y1 );
+  use b2y2 ( bufsel2, a2w_y2, a2r_y2, w2_y2, r2_y2, di2_y2, do2_y2 );
+  use b2u ( bufsel2, a2w_u, a2r_u, w2_u, r2_u, di2_u , do2_u );
+  use b2v ( bufsel2, a2w_v, a2r_v, w2_v, r2_v, di2_v , do2_v );
+  sig a3r_y1, a3r_y2, a3r_u, a3r_v : ns(6);
+  sig r3_y1, r3_y2, r3_u, r3_v : ns(1);
+  sig do3_y1, do3_y2, do3_u, do3_v : tc(15);
+  sig di3_y1, di3_y2, di3_u, di3_v : tc(15);
+  sig a3w_y1, a3w_y2, a3w_u, a3w_v : ns(6);
+  sig w3_y1, w3_y2, w3_u, w3_v : ns(1);
+  sig do5_y1, do5_y2, do5_u, do5_v : tc(15);
+  sig di5_y1, di5_y2, di5_u, di5_v : tc(15);
+  sig a5_y1, a5_y2, a5_u, a5_v : ns(6);
+  sig r5_y1, r5_y2, r5_u, r5_v : ns(1);
+  sig w5_y1, w5_y2, w5_u, w5_v : ns(1);
+  sig finish_dct_y2,finish_dct_u, finish_dct_v : ns(1);
+  use dcty1( start_dct, finish_dct_y1, do2_y1, a2r_y1, r2_y1, di3_y1, a3w_y1, w3_y1, do5_y1, di5_y1, a5_y1, r5_y1, w5_y1 );
+  use dcty2( start_dct, finish_dct_y2, do2_y2, a2r_y2, r2_y2, di3_y2, a3w_y2, w3_y2, do5_y2, di5_y2, a5_y2, r5_y2, w5_y2 );
+  use dctu ( start_dct, finish_dct_u, do2_u, a2r_u, r2_u, di3_u, a3w_u, w3_u, do5_u, di5_u, a5_u, r5_u, w5_u );
+  use dctv ( start_dct, finish_dct_v, do2_v, a2r_v, r2_v, di3_v, a3w_v, w3_v, do5_v, di5_v, a5_v, r5_v, w5_v );
+  use b5y1 ( a5_y1, w5_y1, r5_y1, di5_y1, do5_y1 );
+  use b5y2 ( a5_y2, w5_y2, r5_y2, di5_y2, do5_y2 );
+  use b5u ( a5_u, w5_u, r5_u, di5_u , do5_u );
+  use b5v ( a5_v, w5_v, r5_v, di5_v , do5_v );
+  use b3y1 ( bufsel3, a3w_y1, a3r_y1, w3_y1, r3_y1, di3_y1, do3_y1 );
+  use b3y2 ( bufsel3, a3w_y2, a3r_y2, w3_y2, r3_y2, di3_y2, do3_y2 );
+  use b3u ( bufsel3, a3w_u, a3r_u, w3_u, r3_u, di3_u , do3_u );
+  use b3v ( bufsel3, a3w_v, a3r_v, w3_v, r3_v, di3_v , do3_v );
+  sig a4w_y1, a4w_y2, a4w_u, a4w_v : ns(6);
+  sig w4_y1, w4_y2, w4_u, w4_v : ns(1);
+  sig di4_y1, di4_y2, di4_u, di4_v : tc(15);
+  sig a4r_y1, a4r_y2, a4r_u, a4r_v : ns(6);
+  sig r4_y1, r4_y2, r4_u, r4_v : ns(1);
+  sig do4_y1, do4_y2, do4_u, do4_v : tc(15);
+  sig finish_quant_y2,finish_quant_u, finish_quant_v : ns(1);
+  use quanty1( start_quant, finish_quant_y1, do3_y1, di4_y1, r3_y1, w4_y1, a3r_y1, a4w_y1 );
+  use quanty2( start_quant, finish_quant_y2, do3_y2, di4_y2, r3_y2, w4_y2, a3r_y2, a4w_y2 );
+  use quantu ( start_quant, finish_quant_u, do3_u, di4_u, r3_u, w4_u, a3r_u, a4w_u );
+  use quantv ( start_quant, finish_quant_v, do3_v, di4_v, r3_v, w4_v, a3r_v, a4w_v );
+  use b4y1 ( bufsel4, a4w_y1, a4r_y1, w4_y1, r4_y1, di4_y1, do4_y1 );
+  use b4y2 ( bufsel4, a4w_y2, a4r_y2, w4_y2, r4_y2, di4_y2, do4_y2 );
+  use b4u ( bufsel4, a4w_u, a4r_u, w4_u, r4_u, di4_u, do4_u );
+  use b4v ( bufsel4, a4w_v, a4r_v, w4_v, r4_v, di4_v, do4_v );
+  sig outen : ns(1);
+  sig outval : ns(16);
+  sig outnb : ns(7);
+  use huf_dp( start_huf, finish_huf, do4_y1, do4_y2, do4_u, do4_v,
+             a4r_y1, a4r_y2, a4r_u, a4r_v, r4_y1, r4_y2, r4_u, r4_v, outen, outval, outnb );
+  sig a6 : ns(10);
+  sig w6, r6 : ns(1);
+  sig di6, do6 : ns(32);
+  use fdump( start_fdump, a6, w6, r6, di6, stream, do6, outen, outval, outnb);
+  use b6 ( a6, w6, r6, di6, do6 );
+  sfg run{
+           debug1 = finish_8line;
+           debug2 = finish_rgbyuv;
+           debug3 = finish_dct_y1;
+           debug4 = finish_quant_y1;
+           debug5 = finish_huf;
+           debug6 = vsync;
+           debug7 = hsync;
+           debug8 = oddeven;
+ }
+ $trace(datar,"datar.txt");
+ $trace(vsync,"vsync.txt");
+ $trace(hsync,"hsync.txt");
+ $trace(di1_r,"di1_r.txt");
+ $trace(w1_r,"w1_r.txt");
+ $trace(a1w_r,"a1w_r.txt");
+ $trace(oddeven,"oddeven.txt");
+ $trace(bufsel1,"bufsel1.txt");
+ $trace(bufsel2,"bufsel2.txt");
+ $trace(finish_8line,"finish_8line.txt");
+ $trace(start_rgbyuv,"start_rgbyuv.txt");
+ $trace(finish_rgbyuv,"finish_rgbyuv.txt");
+ $trace(do1_r,"do1_r.txt");
+ $trace(r1_r,"r1_r.txt");
+ $trace(a1r_r,"a1r_r.txt");
+ $trace(di2_y1,"di2_y1.txt");
+ $trace(a2w_y1,"a2w_y1.txt");
+ $trace(w2_y1,"w2_y1.txt");
+ $trace(start_dct,"start_dct.txt");
+ $trace(finish_dct_y1,"finish_dct_y1.txt");
+ $trace(do2_y1,"do2_y1.txt");
+ $trace(a2r_y1,"a2r_y1.txt");
+ $trace(r2_y1,"r2_y1.txt");
+ $trace(di3_y1,"di3_y1.txt");
+ $trace(a3w_y1,"a3w_y1.txt");
+ $trace(w3_y1,"w3_y1.txt");
+ $trace(di5_y1,"di5_y1.txt");
+ $trace(a5_y1,"a5_y1.txt");
+ $trace(r5_y1,"r5_y1.txt");
+ $trace(w5_y1,"w5_y1.txt");
+ $trace(start_quant,"start_quant.txt");
+ $trace(finish_quant_y1,"finish_quant_y1.txt");
+ $trace(do3_y1,"do3_y1.txt");
+ $trace(di4_y1,"di4_y1.txt");
+ $trace(r3_y1,"r3_y1.txt");
+ $trace(w4_y1,"w4_y1.txt");
+ $trace(a3r_y1,"a3r_y1.txt");
+ $trace(a4w_y1,"a4w_y1.txt");
+ $trace(start_huf,"start_huf.txt");
+ $trace(finish_huf,"finish_huf.txt");
+ $trace(r4_y1,"r4_y1.txt");
+ $trace(r4_y2,"r4_y2.txt");
+ $trace(r4_u,"r4_u.txt");
+ $trace(r4_v,"r4_v.txt");
+ $trace(a4r_y1,"a4r_y1.txt");
+ $trace(a4r_y2,"a4r_y2.txt");
+ $trace(a4r_u,"a4r_u.txt");
+ $trace(a4r_v,"a4r_v.txt");
+ $trace(do4_y1,"do4_y1.txt");
+ $trace(do4_y2,"do4_y2.txt");
+ $trace(do4_u,"do4_u.txt");
+ $trace(do4_v,"do4_v.txt");
+ $trace(outen,"outen.txt");
+ $trace(outval,"outval.txt");
+ $trace(outnb,"outnb.txt");
+ $trace(start_fdump,"start_fdump.txt");
+ $trace(stream, "stream.txt");
+}
+hardwired t_jpeg(jpeg) { run; }
+dp sys_jpeg {
+  sig datar, datag, datab : ns(8);
+  sig vsync, hsync, oddeven : ns(1);
+  sig debug1, debug2, debug3, debug4, debug5, debug6, debug7, debug8 : ns(1);
+  sig stream : ns(8);
+  use jpeg (datar, datag, datab, vsync, hsync, oddeven, debug1, debug2, debug3, debug4, debug5, debug6, debug7, debug8, stream);
+  use test_jpeg (datar, datag, datab, vsync, hsync, oddeven);
+}
+system S { sys_jpeg; }

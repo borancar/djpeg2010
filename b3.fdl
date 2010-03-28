@@ -1,0 +1,49 @@
+/////////////////////////////////// 
+//  b3 for HJ81 by K.Sakiyama    //
+//    ver0.0 22th of April, 2005 //
+/////////////////////////////////// 
+
+/////// b3 : Buffer 3(Y1) (Double Buffer of 15bitx8word SRAM(ram3a,ram3b)) 
+/////// Input data is by block scan, output data is by block scan
+/////// Switching R/W banks, bufsel3 is controlled by main fsm
+
+ipblock ram3a(in  address  : ns(6); in  wr,rd : ns(1);
+              in  idata    : tc(15); out odata   : tc(15)) {
+  iptype "ram"; ipparm "wl=15"; ipparm "size=64"; }
+
+ipblock ram3b(in  address  : ns(6); in  wr,rd : ns(1);
+              in  idata    : tc(15); out odata   : tc(15)) {
+  iptype "ram"; ipparm "wl=15"; ipparm "size=64"; }
+
+dp b3   ( in bufsel3 : ns(1);
+          in a3w, a3r : ns(6); in w3, r3 : ns(1);
+          in di3 : tc(15); out do3 : tc(15))
+{
+   sig a3a, a3b : ns(6);
+   sig w3a, r3a, w3b, r3b : ns(1);
+   sig di3a, do3a, di3b, do3b : tc(15);
+
+   use ram3a(a3a, w3a, r3a, di3a, do3a);
+   use ram3b(a3b, w3b, r3b, di3b, do3b);
+
+   sfg run {
+      a3a = (bufsel3)? a3r : a3w;
+      w3a = (bufsel3)? 0 : w3;
+      r3a = (bufsel3)? r3 : 0;
+      di3a = (bufsel3)? 0 : di3;
+   
+      a3b = (bufsel3)? a3w : a3r;
+      w3b = (bufsel3)? w3 : 0;
+      r3b = (bufsel3)? 0 : r3;
+      di3b = (bufsel3)? di3 : 0;
+
+      do3 = (bufsel3)? do3a : do3b;
+$display ($cycle,"  bufsel3=",bufsel3,"  a3a=",a3a,"  w3a=",w3a,"  r3a=",r3a,"  di3a=",di3a,"  do3a=",do3a,
+                                      "  a3b=",a3b,"  w3b=",w3b,"  r3b=",r3b,"  di3b=",di3b,"  do3b=",do3b);
+   }
+}
+hardwired run_b3(b3) { run; }
+dp b3y1 : b3
+dp b3y2 : b3
+dp b3u : b3
+dp b3v : b3

@@ -1,0 +1,181 @@
+#include "main.fdl"
+#include "test_jpeg.fdl"
+#include "camif.fdl"
+#include "b1.fdl"
+#include "rgbyuv.fdl"
+#include "b2.fdl"
+#include "dct.fdl"
+#include "b5.fdl"
+#include "b3.fdl"
+#include "quant2new.fdl"
+#include "b4.fdl"
+
+dp input_test {
+
+	sig datar, datag, datab : ns(8);
+	sig vsync, hsync, oddeven : ns(1);
+
+	sig finish_8line, finish_rgbyuv, finish_dct_y1, finish_quant_y1, finish_huf : ns(1);
+	sig bufsel1, bufsel2, bufsel3, bufsel4 : ns(1);
+	sig start_rgbyuv, start_dct, start_quant, start_huf, start_fdump : ns(1);
+	
+	sig di1_r, di1_g, di1_b : ns(8);
+	sig a1w_r, a1w_g, a1w_b : ns(9);
+	sig w1_r,  w1_g,  w1_b  : ns(1);
+
+	sig do1_r, do1_g, do1_b : ns(8);
+	sig a1r_r, a1r_g, a1r_b : ns(9);
+	sig r1_r,  r1_g,  r1_b  : ns(1);
+
+
+	// ====== USE ====== //
+	use test_jpeg (datar, datag, datab, vsync, hsync, oddeven);
+
+	use camif ( datar, datag, datab, vsync, hsync, oddeven,
+             bufsel1, finish_8line, a1w_r, a1w_g, a1w_b, w1_r, w1_g, w1_b, di1_r, di1_g, di1_b );
+
+  	use main ( finish_8line, finish_rgbyuv, finish_dct_y1, finish_quant_y1, finish_huf,
+             bufsel2, bufsel3, bufsel4,
+             start_rgbyuv, start_dct, start_quant, start_huf, start_fdump );
+
+	use b1r  ( bufsel1, a1w_r, a1r_r, w1_r, r1_r, di1_r, do1_r );
+	use b1g  ( bufsel1, a1w_g, a1r_g, w1_g, r1_g, di1_g, do1_g );
+	use b1b  ( bufsel1, a1w_b, a1r_b, w1_b, r1_b, di1_b, do1_b );
+
+	sig di2_y1, di2_y2, di2_u, di2_v : ns(8);
+	sig a2w_y1, a2w_y2, a2w_u, a2w_v : ns(6);
+	sig w2_y1,  w2_y2,  w2_u,  w2_v  : ns(1);
+
+	use rgbyuv( start_rgbyuv, finish_rgbyuv,
+				do1_r,  do1_g,  do1_b, 
+				a1r_r,  a1r_g,  a1r_b,
+ 				r1_r,   r1_g,   r1_b, 
+ 				di2_y1, di2_y2, di2_u, di2_v,
+ 				a2w_y1, a2w_y2, a2w_u, a2w_v, 
+ 				w2_y1,  w2_y2,  w2_u,  w2_v );
+    //------- use --------//
+
+	sig a2r_y1, a2r_y2, a2r_u, a2r_v : ns(6);
+	sig r2_y1,  r2_y2,  r2_u,  r2_v  : ns(1);
+	sig do2_y1, do2_y2, do2_u, do2_v : ns(8);
+  
+	use b2y1 ( bufsel2, a2w_y1, a2r_y1, w2_y1, r2_y1, di2_y1, do2_y1 );
+	use b2y2 ( bufsel2, a2w_y2, a2r_y2, w2_y2, r2_y2, di2_y2, do2_y2 );
+	use b2u  ( bufsel2, a2w_u,  a2r_u,  w2_u,  r2_u,  di2_u , do2_u );
+	use b2v  ( bufsel2, a2w_v,  a2r_v,  w2_v,  r2_v,  di2_v , do2_v );
+	
+	
+	// ----- DCT ------- //
+	
+	sig a3r_y1,  a3r_y2, a3r_u, a3r_v : ns(6);
+  	sig r3_y1, r3_y2, r3_u, r3_v : ns(1);
+  	sig do3_y1,  do3_y2, do3_u, do3_v : tc(15);
+  
+	sig di3_y1, di3_y2, di3_u, di3_v : tc(15);
+  	sig a3w_y1, a3w_y2, a3w_u, a3w_v : ns(6);
+  	sig w3_y1,  w3_y2,  w3_u,  w3_v  : ns(1);
+ 	sig do5_y1, do5_y2, do5_u, do5_v : tc(15);
+  	sig di5_y1, di5_y2, di5_u, di5_v : tc(15);
+ 	sig a5_y1,  a5_y2,  a5_u,  a5_v  : ns(6);
+  	sig r5_y1,  r5_y2,  r5_u,  r5_v  : ns(1);
+	sig w5_y1,  w5_y2,  w5_u,  w5_v  : ns(1);
+  	sig finish_dct_y2,finish_dct_u, finish_dct_v : ns(1);
+  
+	use dcty1( start_dct, finish_dct_y1, do2_y1, a2r_y1, r2_y1, di3_y1, a3w_y1, w3_y1, do5_y1, di5_y1, a5_y1, r5_y1, w5_y1 );
+  	use dcty2( start_dct, finish_dct_y2, do2_y2, a2r_y2, r2_y2, di3_y2, a3w_y2, w3_y2, do5_y2, di5_y2, a5_y2, r5_y2, w5_y2 );
+  	use dctu ( start_dct, finish_dct_u,  do2_u,  a2r_u,  r2_u,  di3_u,  a3w_u,  w3_u,  do5_u,  di5_u,  a5_u,  r5_u,  w5_u );
+  	use dctv ( start_dct, finish_dct_v,  do2_v,  a2r_v,  r2_v,  di3_v,  a3w_v,  w3_v,  do5_v,  di5_v,  a5_v,  r5_v,  w5_v );
+
+	use b5y1 ( a5_y1, w5_y1, r5_y1, di5_y1, do5_y1 );
+  	use b5y2 ( a5_y2, w5_y2, r5_y2, di5_y2, do5_y2 );
+  	use b5u  ( a5_u,  w5_u,  r5_u,  di5_u , do5_u );
+  	use b5v  ( a5_v,  w5_v,  r5_v,  di5_v , do5_v );
+
+  	use b3y1 ( bufsel3, a3w_y1, a3r_y1, w3_y1, r3_y1, di3_y1, do3_y1 );
+  	use b3y2 ( bufsel3, a3w_y2, a3r_y2, w3_y2, r3_y2, di3_y2, do3_y2 );
+  	use b3u  ( bufsel3, a3w_u,  a3r_u,  w3_u,  r3_u,  di3_u , do3_u );
+  	use b3v  ( bufsel3, a3w_v,  a3r_v,  w3_v,  r3_v,  di3_v , do3_v );
+  	
+	sig a4w_y1, a4w_y2, a4w_u, a4w_v : ns(6);
+	sig  w4_y1,  w4_y2,  w4_u,  w4_v : ns(1);
+	sig di4_y1, di4_y2, di4_u, di4_v : tc(15);
+	sig a4r_y1, a4r_y2, a4r_u, a4r_v : ns(6);
+	sig  r4_y1,  r4_y2,  r4_u,  r4_v : ns(1);
+	sig do4_y1, do4_y2, do4_u, do4_v : tc(15);
+	sig finish_quant_y2,finish_quant_u, finish_quant_v : ns(1);
+	
+  	use b4y1 ( bufsel4, a4w_y1, a4r_y1, w4_y1, r4_y1, di4_y1, do4_y1 );
+	use b4y2 ( bufsel4, a4w_y2, a4r_y2, w4_y2, r4_y2, di4_y2, do4_y2 );
+  	use b4u  ( bufsel4, a4w_u,  a4r_u,  w4_u,  r4_u,  di4_u,  do4_u );
+  	use b4v  ( bufsel4, a4w_v,  a4r_v,  w4_v,  r4_v,  di4_v,  do4_v );
+
+
+	always {
+		//start_rgbyuv = finish_8line;
+		//$display("Cycle: ", $cycle);
+		//$display("Addr to read: ", ad1r_r, ", flag: ", rd1_r);
+		//$display("Addr to write: ", ad2w_y1, ", flag: ", wr2_y1);
+		//$display("(Y, U, V): (", din2_y1, ",", din2_u, ",", din2_v, ")");
+		//$display("Finished: ", fin_rgbyuv);
+
+// 		r4_y1=0;
+// 		r4_y2=0;
+// 		r4_u=0;
+// 		r4_v=0;
+// 
+// 		a4r_y1=0;
+// 		a4r_y2=0;
+// 		a4r_u=0;
+// 		a4w_v=0;
+			
+		//fake
+	}
+	
+	// === TRACE ===//
+	$trace(datar,"datar.txt");
+	$trace(vsync,"vsync.txt");
+	$trace(hsync,"hsync.txt");
+	
+	$trace(di1_r,"di1_r.txt");
+	$trace(w1_r,"w1_r.txt");
+	$trace(a1w_r,"a1w_r.txt");
+	
+	$trace(oddeven,"oddeven.txt");
+	$trace(bufsel1,"bufsel1.txt");
+	$trace(bufsel2,"bufsel2.txt");
+	
+	$trace(finish_8line,"finish_8line.txt");
+	$trace(start_rgbyuv,"start_rgbyuv.txt");
+	$trace(finish_rgbyuv,"finish_rgbyuv.txt");
+	
+	$trace(do1_r,"do1_r.txt");
+	$trace(r1_r,"r1_r.txt");
+	$trace(a1r_r,"a1r_r.txt");
+
+	$trace(di2_y1,"di2_y1.txt");
+	$trace(a2w_y1,"a2w_y1.txt");
+	$trace(w2_y1,"w2_y1.txt");
+	
+	$trace(start_dct,"start_dct.txt");
+	
+// in dout2 ; out ad2r ; out rd2; out din3 ;   out ad3w ; out wr3 ;  in dout5;  out din5 ;  out ad5;    out rd5;   out wr5;
+//do2_y1, a2r_y1, r2_y1, di3_y1, a3w_y1, w3_y1, do5_y1, di5_y1, a5_y1, r5_y1, w5_y1 
+	$trace(finish_dct_y1,"finish_dct_y1.txt");
+	$trace(do2_y1,"do2_y1.txt");
+	$trace(a2r_y1,"a2r_y1.txt");
+	$trace(r2_y1,"r2_y1.txt");
+	$trace(di3_y1,"di3_y1.txt");
+	$trace(a3w_y1,"a3w_y1.txt");
+	$trace(w3_y1,"w3_y1.txt");
+	$trace(di5_y1,"di5_y1.txt");
+	$trace(a5_y1,"a5_y1.txt");
+	$trace(r5_y1,"r5_y1.txt");
+	$trace(w5_y1,"w5_y1.txt");
+
+	//------ trace -------//
+}
+
+//============ SYSTEM ==============//
+system sa{
+	input_test;
+}

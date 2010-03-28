@@ -1,0 +1,10 @@
+/////////////////////////////////// 
+//  b6 for HJ81 by K.Sakiyama    //
+//    ver0.0 18th of Mar  , 2006 //
+/////////////////////////////////// 
+
+/////// b6 : Buffer6(32) (Single Buffer of 32bitx1024word SRAM) 
+
+ipblock b6(in  address  : ns(10); in  wr,rd : ns(1);
+             in  idata    : ns(32); out odata   : ns(32)) {
+  iptype "ram"; ipparm "wl=32"; ipparm "size=1024"; }

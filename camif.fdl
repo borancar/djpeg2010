@@ -1,0 +1,114 @@
+
+dp camif ( in datar   : ns(8);
+           in datag   : ns(8);
+           in datab   : ns(8);
+           in vsync   : ns(1);
+           in hsync   : ns(1);
+           in oddeven : ns(1);
+          out bufsel1 : ns(1);
+          out fin8line : ns(1);
+          out adr, adg, adb : ns(9);
+          out wrr, wrg, wrb : ns(1);
+          out dir, dig, dib : ns(8) )
+{
+
+	reg ad : ns(9); //address
+	reg bufs1_reg : ns(1);
+	sig wr : ns(1); //write enable
+	$trace(ad,"ad.txt");
+
+	sfg zero {
+		bufs1_reg=0;
+		fin8line=0;
+		wr=0;
+		ad=0;
+	}
+	
+	sfg idle {
+		fin8line=0;
+		wr=0;
+		ad=0;
+	}
+	
+	sfg strwrt{
+		fin8line=0;
+		wr=1;
+		ad=1;
+	}
+	
+	sfg flipB1 {	//first buffer writing
+		bufs1_reg=~bufs1_reg;
+	}
+
+	sfg fin8 {	// 8 lines reading is finished
+		fin8line=1;
+		wr=0;
+		ad=0;
+	}
+	
+	sfg fin82 {
+		fin8line=0;
+		wr=0;
+		ad=0;		
+	}
+	
+	sfg proc8 {	//still processing 8 lines
+		fin8line=0;
+		wr=1;
+		ad=ad+1;
+	}
+
+	reg r, g, b : ns(8); //input buffers
+	reg hsyncreg, oddevenreg : ns(1);
+	
+	always {
+		bufsel1=bufs1_reg;
+		
+		r = datar;
+		g = datag;
+		b = datab;
+		hsyncreg = hsync;
+		oddevenreg = oddeven;
+		
+		wrr=wr;
+		wrg=wr;
+		wrb=wr;
+
+		adr = ad;
+		adg = ad;
+		adb = ad;
+
+		dir=r;
+		dig=g;
+		dib=b;
+
+		$display("hsync=", hsync);
+		$display("r =",r,"  g=",g, "  b=",b);
+	}	
+}
+
+////// DCT CAM I/F //////
+fsm camif_ctrl(camif) {
+
+  initial s0;
+  state  s1, s2, s3, s4, s0s1;
+
+	//init
+	@s0 (zero) -> s1;
+	
+  	@s1	if (hsyncreg==1) then (fin82) -> s2;
+  			else (idle) -> s1;
+
+	@s2 if (oddevenreg==0) then (strwrt)-> s4;
+		else (strwrt) -> s3;
+	
+	@s3	if (oddevenreg==0) then (fin8,flipB1) -> s1;
+			else (proc8) -> s3;
+
+	//8lines
+	@s4	if (oddevenreg==1) then (fin8,flipB1) -> s1;
+			else (proc8) -> s4;
+	
+
+}
+

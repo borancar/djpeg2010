@@ -1,0 +1,49 @@
+/////////////////////////////////// 
+//  b4 for HJ81 by K.Sakiyama    //
+//    ver0.0 22th of April, 2005 //
+/////////////////////////////////// 
+
+/////// b4 : Buffer 4(Y1) (Double Buffer of 8bitx8word SRAM(ram4a,ram4b)) 
+/////// Input data is by block scan, output data is by block scan
+/////// Switching R/W banks, bufsel4 is controlled by main fsm
+
+ipblock ram4a(in  address  : ns(6); in  wr,rd : ns(1);
+              in  idata    : tc(8); out odata   : tc(8)) {
+  iptype "ram"; ipparm "wl=8"; ipparm "size=64"; }
+
+ipblock ram4b(in  address  : ns(6); in  wr,rd : ns(1);
+              in  idata    : tc(8); out odata   : tc(8)) {
+  iptype "ram"; ipparm "wl=8"; ipparm "size=64"; }
+
+dp b4   ( in bufsel4 : ns(1);
+          in a4w, a4r : ns(6); in w4, r4 : ns(1);
+          in di4 : tc(8); out do4 : tc(8))
+{
+   sig a4a, a4b : ns(6);
+   sig w4a, r4a, w4b, r4b : ns(1);
+   sig di4a, do4a, di4b, do4b : tc(8);
+
+   use ram4a(a4a, w4a, r4a, di4a, do4a);
+   use ram4b(a4b, w4b, r4b, di4b, do4b);
+
+   sfg run {
+      a4a = (bufsel4)? a4r : a4w;
+      w4a = (bufsel4)? 0 : w4;
+      r4a = (bufsel4)? r4 : 0;
+      di4a = (bufsel4)? 0 : di4;
+   
+      a4b = (bufsel4)? a4w : a4r;
+      w4b = (bufsel4)? w4 : 0;
+      r4b = (bufsel4)? 0 : r4;
+      di4b = (bufsel4)? di4 : 0;
+
+      do4 = (bufsel4)? do4a : do4b;
+$display ($cycle,"  bufsel4=",bufsel4,"  a4a=",a4a,"  w4a=",w4a,"  r4a=",r4a,"  di4a=",di4a,"  do4a=",do4a,
+                                      "  a4b=",a4b,"  w4b=",w4b,"  r4b=",r4b,"  di4b=",di4b,"  do4b=",do4b);
+   }
+}
+hardwired run_b4(b4) { run; }
+dp b4y1 : b4
+dp b4y2 : b4
+dp b4u : b4
+dp b4v : b4

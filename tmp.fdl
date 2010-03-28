@@ -1,0 +1,179 @@
+
+ipblock testfile(out c, d1, d2, d3 : ns(8)) {
+  iptype "filesource";
+  ipparm "file=bunny_ppm.txt";
+  ipparm "wl=8";
+  ipparm "base=16";
+}
+
+
+dp test_jpeg( out datar, datag, datab : ns(8);
+              out vsync, hsync, oddeven : ns(1) )
+{
+  sig ctrl, pixr, pixg, pixb : ns(8);
+  use testfile(ctrl, pixr, pixg, pixb);
+
+  sfg run {
+             vsync = ctrl[0];
+             hsync = ctrl[1];
+
+             oddeven = ctrl[2];
+             datar = pixr;
+             datag = pixg;
+             datab = pixb;
+$display("TEST INPUT (R,G,B)=",datar,datag,datab," vsync=",vsync," hsync=",hsync," oddeven=",oddeven);
+ }
+}
+hardwired h_test_jpeg(test_jpeg) { run; }
+dp camif ( in datar : ns(8);
+           in datag : ns(8);
+           in datab : ns(8);
+           in vsync : ns(1);
+           in hsync : ns(1);
+           in oddeven : ns(1);
+          out bufsel1 : ns(1);
+          out fin8line : ns(1);
+          out adr, adg, adb : ns(9);
+          out wrr, wrg, wrb : ns(1);
+          out dir, dig, dib : ns(8) )
+{
+ reg ad : ns(9);
+ sig wr : ns(1);
+ $trace(ad,"ad.txt");
+ sfg zero {
+  fin8line=0;
+  wr=0;
+  ad=0;
+ }
+ sfg buf1 {
+  bufsel1=0;
+ }
+ sfg buf2 {
+  bufsel1=1;
+ }
+ sfg fin8 {
+  fin8line=1;
+  wr=0;
+  ad=0;
+ }
+ sfg proc8 {
+  fin8line=0;
+  wr=1;
+  ad=ad+1;
+ }
+ reg r, g, b : ns(8);
+ reg hsyncreg, oddevenreg : ns(1);
+ always {
+  r = datar;
+  g = datag;
+  b = datab;
+  hsyncreg = hsync;
+  oddevenreg = oddever;
+  wrr=wr;
+  wrg=wr;
+  wrb=wr;
+  adr = ad;
+  adg = ad;
+  adb = ad;
+  dir=r;
+  dig=g;
+  dib=b;
+  $display("hsync=", hsync);
+  $display("r =",r,"  g=",g, "  b=",b);
+ }
+}
+fsm camif_ctrl(camif) {
+  initial s0;
+  state s1, s2, s3, s4, s0s1;
+ @s0 if (hsyncreg==1) then (zero,buf1) -> s1;
+   else (zero,buf1) -> s0;
+ @s1 if (oddevenreg==1) then (buf1,proc8) -> s2;
+   else (buf1,proc8) -> s1;
+ @s2 if (hsyncreg==1) then (buf2,fin8) -> s3;
+   else (buf2,fin8) -> s2;
+ @s3 if (oddevenreg==0) then (buf2,proc8)-> s4;
+   else (buf2,proc8) -> s3;
+
+ @s4 if (hsyncreg==1) then (buf1,fin8) -> s1;
+   else (buf1,fin8) -> s4;
+
+}
+ipblock ram1a(in address : ns(9); in wr,rd : ns(1);
+              in idata : ns(8); out odata : ns(8)) {
+  iptype "ram"; ipparm "wl=8"; ipparm "size=512"; }
+ipblock ram1b(in address : ns(9); in wr,rd : ns(1);
+              in idata : ns(8); out odata : ns(8)) {
+  iptype "ram"; ipparm "wl=8"; ipparm "size=512"; }
+dp b1 ( in bufsel1 : ns(1);
+         in a1w, a1r : ns(9); in w1, r1 : ns(1);
+         in di1 : ns(8); out do1 : ns(8))
+{
+   sig a1a, a1b : ns(9);
+   sig w1a, r1a, w1b, r1b : ns(1);
+   sig di1a, do1a, di1b, do1b : ns(8);
+   sig t_a1r : ns(9);
+   sig row, col : ns(3);
+   sig tab : ns(2);
+   always {
+  col = a1r[2]#a1r[1]#a1r[0];
+  row = a1r[5]#a1r[4]#a1r[3];
+  tab = a1r[7]#a1r[6];
+     t_a1r = col + (row<<6) + (tab<<3);
+ }
+   use ram1a(a1a, w1a, r1a, di1a, do1a);
+   use ram1b(a1b, w1b, r1b, di1b, do1b);
+   sfg run {
+      a1a = (bufsel1)? t_a1r : a1w;
+      w1a = (bufsel1)? 0 : w1;
+      r1a = (bufsel1)? r1 : 0;
+      di1a = (bufsel1)? 0 : di1;
+      a1b = (bufsel1)? a1w : t_a1r;
+      w1b = (bufsel1)? w1 : 0;
+      r1b = (bufsel1)? 0 : r1;
+      di1b = (bufsel1)? di1 : 0;
+      do1 = (bufsel1)? do1a : do1b;
+   $display ($cycle,"  bufsel1=",bufsel1,"  w1a=",w1a,"  di1a=",di1a,"  a1b=",a1b,"  w1b=",w1b,"  di1b=",di1b);
+   }
+}
+hardwired run_b1(b1) { run; }
+dp b1r : b1
+dp b1g : b1
+dp b1b : b1
+dp camif_test {
+ sig datar, datag, datab : ns(8);
+ sig vsync, hsync, oddeven : ns(1);
+ sig bufsel1 : ns(1);
+ sig finish_8line : ns(1);
+ sig di1_r, di1_g, di1_b : ns(8);
+ sig a1w_r, a1w_g, a1w_b : ns(9);
+ sig w1_r, w1_g, w1_b : ns(1);
+ sig do1_r, do1_g, do1_b : ns(8);
+ sig a1r_r, a1r_g, a1r_b : ns(9);
+ sig r1_r, r1_g, r1_b : ns(1);
+ $trace(datar,"datar.txt");
+  $trace(vsync,"vsync.txt");
+  $trace(hsync,"hsync.txt");
+ $trace(di1_r,"di1_r.txt");
+ $trace(w1_r,"w1_r.txt");
+ $trace(a1w_r,"a1w_r.txt");
+  $trace(oddeven,"oddeven.txt");
+  $trace(bufsel1,"bufsel1.txt");
+  $trace(finish_8line,"finish_8line.txt");
+ use test_jpeg (datar, datag, datab, vsync, hsync, oddeven);
+ use camif ( datar, datag, datab, vsync, hsync, oddeven,
+             bufsel1, finish_8line, a1w_r, a1w_g, a1w_b, w1_r, w1_g, w1_b, di1_r, di1_g, di1_b );
+ use b1r ( bufsel1, a1w_r, a1r_r, w1_r, r1_r, di1_r, do1_r );
+ use b1g ( bufsel1, a1w_g, a1r_g, w1_g, r1_g, di1_g, do1_g );
+ use b1b ( bufsel1, a1w_b, a1r_b, w1_b, r1_b, di1_b, do1_b );
+ always {
+  a1r_r=0;
+  a1r_g=0;
+  a1r_b=0;
+  r1_r=0;
+  r1_g=0;
+  r1_b=0;
+ }
+}
+system sa{
+ camif_test;
+}

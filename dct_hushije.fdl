@@ -1,0 +1,58 @@
+/////// You need to specify XXX depending on your fixed-point refinement
+/////// You need to specify XXX depending on your fixed-point refinement
+/////// You need to specify XXX depending on your fixed-point refinement
+
+
+////// DCT DATA PATH //////
+dp dct  ( 	in start_dct : ns(1); out fin_dct : ns(1);
+        	in dout2 : ns(15);
+          	out ad2r : ns(6); out rd2 : ns(1);
+            out din3 : tc(15); out ad3w : ns(6);
+            out wr3 : ns(1);
+          	in dout5 : tc(15); out din5 : tc(15); out ad5  : ns(6); out rd5 : ns(1); out wr5 : ns(1) )
+{
+	reg start : ns(1);
+	
+	always {
+		start=start_dct;
+		ad2r=0;
+		rd2=0;
+		din3=0;
+		ad3w=0;
+		wr3=0;
+		din5=0;
+		ad5=0;
+		rd5=0;
+		wr5=0;
+	}
+	
+	sfg init {
+		fin_dct=0;
+	}
+	
+	sfg idle {
+		fin_dct=0;
+	}
+	
+	sfg done {
+		fin_dct=1;
+	}
+	
+}
+
+////// DCT FSM //////
+fsm dct_ctl(dct) {
+  initial s0;
+  state  s1, s2, s3;
+
+	@s0  ( init ) -> s1;
+	@s1  if (start==1) then ( idle ) -> s2;
+                else ( idle ) -> s1;
+  	@s2 (done) -> s0;
+
+}
+
+dp dcty1 : dct
+dp dcty2 : dct
+dp dctu  : dct
+dp dctv  : dct

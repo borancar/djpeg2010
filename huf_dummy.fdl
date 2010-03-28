@@ -1,0 +1,81 @@
+/////// You need to specify XXX depending on your fixed-point refinement
+/////// You need to specify XXX depending on your fixed-point refinement
+/////// You need to specify XXX depending on your fixed-point refinement
+
+
+////// DCT DATA PATH //////
+dp dct  ( in start_dct : ns(1); out fin_dct : ns(1);
+          in dout2 : ns(16);                     out ad2r : ns(6); out rd2 : ns(1);
+                             out din3 : tc(16); out ad3w : ns(6);                  out wr3 : ns(1);
+          in dout5 : tc(16); out din5 : tc(16); out ad5  : ns(6); out rd5 : ns(1); out wr5 : ns(1) )
+{
+	reg start, fin : ns(1);
+	reg wait : ns(4);
+	
+	sfg init {
+		wait = 0;
+		//fin = 0;
+		start = 0;
+	}
+	
+	sfg idle {
+		
+	}
+	
+	sfg no_input {
+		ad2r = 0;
+		rd2 = 0;
+	}
+	
+	sfg no_output {
+		din3 = 0;
+		ad3w = 0;
+		wr3 = 0;
+	}
+	
+	sfg no_temp {
+		din5 = 0;
+		ad5 = 0;
+		rd5 = 0;
+		wr5 = 0;
+	}
+	
+	sfg flag {
+		fin_dct = fin;
+		$display("Wait: ", wait, ", fin_dct=", fin_dct);
+	}
+	
+	sfg wait_start {
+		start = start_dct;
+	}
+	
+	sfg run {
+		start = 0;
+		wait = wait + 1;
+		fin = (wait == 15) ? 1 : 0;
+	}
+	
+	sfg flag_no{
+		fin_dct=0;
+	}
+	sfg clear_fin{
+		fin=0;
+	}
+}
+
+////// DCT FSM //////
+fsm dct_ctl(dct) {
+	initial s0;
+	state  s1, s2;
+
+	@s0 (init, flag, no_input, no_output, no_temp) -> s1;
+	@s1 if (start) then (idle, clear_fin, flag_no, no_input, no_output, no_temp) -> s2;
+		else (wait_start, flag, no_input, no_output, no_temp) -> s1;
+	@s2 if (fin) then (flag, no_input, no_output, no_temp, idle) -> s0;
+		else (flag, no_input, no_output, no_temp, run) -> s2;
+}
+
+dp dcty1 : dct
+dp dcty2 : dct
+dp dctu  : dct
+dp dctv  : dct

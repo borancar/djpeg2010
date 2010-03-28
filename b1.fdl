@@ -1,0 +1,55 @@
+/////////////////////////////////// 
+//  b1 for HJ81 by K.Sakiyama    //
+//    ver0.0 22th of April, 2005 //
+/////////////////////////////////// 
+
+/////// b1r : Buffer 1(red) (Double Buffer of 8bitx(64x8)word SRAM(b1_1,b1_2)) 
+/////// Assume that horizontal size of input data is 64 pixels of RGB
+/////// Input data is by raster scan, output data is by block scan
+/////// Switching banks, bufsel1 is controlled by main fsm
+
+ipblock ram1a(in  address  : ns(9); in  wr,rd : ns(1);
+              in  idata    : ns(8); out odata   : ns(8)) {
+  iptype "ram"; ipparm "wl=8"; ipparm "size=512"; }
+
+ipblock ram1b(in  address  : ns(9); in  wr,rd : ns(1);
+              in  idata    : ns(8); out odata   : ns(8)) {
+  iptype "ram"; ipparm "wl=8"; ipparm "size=512"; }
+
+$option "vcd"
+
+dp b1  ( in bufsel1 : ns(1);
+         in a1w, a1r : ns(9); in w1, r1 : ns(1);
+         in di1 : ns(8); out do1 : ns(8))
+{
+   sig a1a, a1b : ns(9);
+   sig w1a, r1a, w1b, r1b : ns(1);
+   sig di1a, do1a, di1b, do1b : ns(8);
+
+   use ram1a(a1a, w1a, r1a, di1a, do1a);
+   use ram1b(a1b, w1b, r1b, di1b, do1b);
+
+   sfg run {
+      a1a = (bufsel1)? a1r : a1w;
+      w1a = (bufsel1)? 0 : w1;
+      r1a = (bufsel1)? r1 : 0;
+      di1a = (bufsel1)? 0 : di1;
+   
+      a1b = (bufsel1)? a1w : a1r;
+      w1b = (bufsel1)? w1 : 0;
+      r1b = (bufsel1)? 0 : r1;
+      di1b = (bufsel1)? di1 : 0;
+   
+      do1 = (bufsel1)? do1a : do1b;
+
+	//$display ($cycle,"  bufsel1=",bufsel1,"  a1a=",a1a,"  w1a=",w1a,"  r1a=",r1a,"  di1a=",di1a,"  do1a=",do1a,"  a1b=",a1b,"  w1b=",w1b,"  r1b=",r1b,"  di1b=",di1b,"  do1b=",do1b);
+	
+	  $display ($cycle,"  bufsel1=",bufsel1,"  w1a=",w1a,"  di1a=",di1a,"  a1b=",a1b,"  w1b=",w1b,"  di1b=",di1b);
+   }
+}
+hardwired run_b1(b1) { run; }
+dp b1r : b1 
+dp b1g : b1 
+dp b1b : b1 
+
+

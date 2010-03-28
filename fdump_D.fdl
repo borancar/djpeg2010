@@ -1,0 +1,223 @@
+/////// You need to specify XXX depending on your fixed-point refinement
+/////// You need to specify XXX depending on your fixed-point refinement
+/////// You need to specify XXX depending on your fixed-point refinement
+
+
+////// FDUMP DATA PATH //////
+dp fdump_head(in address : ns(10);
+                   in rd   : ns(1);
+                   out odata  : ns(8)) {
+   lookup d : ns(8) = {255,216,255,224,0,16,74,70,73,70,0,1,1,0,0,1,0,1,0,0,255,219,0,67,0,16,12,11,10,12,14,14,13,14,16,24,19,16,17,18,24,22,22,24,26,40,51,58,40,29,37,35,49,72,64,55,56,51,57,60,61,55,69,87,68,64,78,92,95,87,81,109,80,56,62,103,104,103,98,112,121,113,77,92,120,100,103,101,99,255,219,0,67,1,17,18,18,24,21,24,47,26,26,47,99,66,56,66,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,99,255,192,0,17,8,0,64,0,64,3,1,33,0,2,17,1,3,17,1,255,196,0,31,0,0,1,5,1,1,1,1,1,1,0,0,0,0,0,0,0,0,1,2,3,4,5,6,7,8,9,10,11,255,196,0,181,16,0,2,1,3,3,2,4,3,5,5,4,4,0,0,1,125,1,2,3,0,4,17,5,18,33,49,65,6,19,81,97,7,34,113,20,50,129,145,161,8,35,66,177,193,21,82,209,240,36,51,98,114,130,9,10,22,23,24,25,26,37,38,39,40,41,42,52,53,54,55,56,57,58,67,68,69,70,71,72,73,74,83,84,85,86,87,88,89,90,99,100,101,102,103,104,105,106,115,116,117,118,119,120,121,122,131,132,133,134,135,136,137,138,146,147,148,149,150,151,152,153,154,162,163,164,165,166,167,168,169,170,178,179,180,181,182,183,184,185,186,194,195,196,197,198,199,200,201,202,210,211,212,213,214,215,216,217,218,225,226,227,228,229,230,231,232,233,234,241,242,243,244,245,246,247,248,249,250,255,196,0,31,1,0,3,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,1,2,3,4,5,6,7,8,9,10,11,255,196,0,181,17,0,2,1,2,4,4,3,4,7,5,4,4,0,1,2,119,0,1,2,3,17,4,5,33,49,6,18,65,81,7,97,113,19,34,50,129,8,20,66,145,161,177,193,9,35,51,82,240,21,98,114,209,10,22,36,52,225,37,241,23,24,25,26,38,39,40,41,42,53,54,55,56,57,58,67,68,69,70,71,72,73,74,83,84,85,86,87,88,89,90,99,100,101,102,103,104,105,106,115,116,117,118,119,120,121,122,130,131,132,133,134,135,136,137,138,146,147,148,149,150,151,152,153,154,162,163,164,165,166,167,168,169,170,178,179,180,181,182,183,184,185,186,194,195,196,197,198,199,200,201,202,210,211,212,213,214,215,216,217,218,226,227,228,229,230,231,232,233,234,242,243,244,245,246,247,248,249,250,255,218,0,12,3,1,0,2,17,3,17,0,63,0,0};
+		always {
+			odata = d(address);
+		}
+ }
+
+dp fdump_core (  in start_fdump : ns(1);
+           out ad6    : ns(10);
+           out wr6    : ns(1);
+           out rd6    : ns(1);
+           out di6    : ns(32);
+           out stream : ns(8);
+            in do6    : ns(32);
+            in outen  : ns(1);
+            in outval : ns(16);
+            in outnb  : ns(7);
+            out adr_head : ns(10);
+            out rd_head : ns(1);
+            in data_head: ns(32) )
+{
+	reg start, rd_head_reg, outen_reg, wr6_reg : ns(1);
+	reg num, num_fin : ns(2);
+	reg length : ns(6);
+	reg adr_head_reg, ad6_reg : ns(10);
+	reg stream_last, stream_reg : ns(8);
+	reg di6_reg, do6_reg, stream_32, count_data : ns(32);
+	reg data_shift : ns(64);
+	reg outval_reg : ns(16);
+	reg outnb_reg : ns(7);
+  reg count : ns(64);
+  
+  sfg init {
+  	ad6 = ad6_reg;
+  	wr6 = wr6_reg;
+  	di6 = di6_reg;
+  	ad6_reg  = 0;
+    wr6_reg      = 0;
+    rd6      = 0;
+    di6_reg  = 0;
+    stream_reg = 0;
+    adr_head_reg = 0;
+    rd_head_reg  = 0;
+    stream = 0;
+  }
+  
+	sfg store_b6 {
+		ad6 = ad6_reg;
+		wr6 = wr6_reg;
+		stream = 0;
+		di6 = di6_reg;
+		wr6_reg = (length>=32&outen_reg);
+		rd6 = 1;
+		ad6_reg = (wr6_reg) ? (ad6_reg + 1) : ad6_reg;
+		di6_reg = data_shift>>(length - 32 );
+		data_shift = (outen_reg)?((data_shift<<outnb_reg)|outval_reg):data_shift;
+		length = (length>=32&outen_reg)?((length + outnb_reg) - 32):((outen_reg)?(length + outnb_reg):length); 
+		count_data = count_data + wr6;
+	}
+	
+	sfg head_write {
+		ad6 = ad6_reg;
+		stream = stream_reg;
+		stream_reg = data_head;
+		adr_head_reg = adr_head_reg + 1;//624
+		rd_head_reg = 1;
+		rd6 = 1;
+		di6 = di6_reg;
+		wr6_reg = 0;
+		num = 0;
+		wr6 = wr6_reg;
+		ad6_reg = 0;
+	}
+	
+	sfg data_write {
+		ad6 = ad6_reg;
+		adr_head_reg = 0;
+		wr6 = wr6_reg;
+		di6 = di6_reg;
+	  stream_32 = (num == 3) ? do6 : (stream_32<<8*(stream_last != 255));
+	  stream = (stream_last == 255) ? 0 : stream_32[31:24];
+	  stream_last = (stream_last == 255) ? 0 : stream_32[31:24];
+	  num = (stream_last == 255) ? num : (num + 1);
+	  rd6 = 1;
+	  ad6_reg = (num == 3) ? (ad6_reg + 1) : ad6_reg;
+	  wr6_reg = 0;
+	}
+	
+	sfg head_write_end {
+		ad6 = 0;
+		rd6 = 1;
+		wr6 = wr6_reg;
+		wr6_reg = 0;
+		di6 = di6_reg;
+		num = 0;
+		ad6_reg = 1;
+		stream_32 = do6;
+		stream = data_head;
+	}
+		
+	sfg tail_write_1 {
+		ad6 = ad6_reg;
+		di6 = di6_reg;
+		wr6 = wr6_reg;
+		stream = 255;
+		wr6_reg      = 0;
+		rd6 = 0;
+	}
+	
+	sfg tail_write_2 {
+		ad6 = ad6_reg;
+		di6 = di6_reg;
+		wr6 = wr6_reg;
+		stream = 217;
+		wr6_reg      = 0;
+		rd6 = 0;
+	}
+	
+	sfg head_init {
+		ad6 = ad6_reg;
+		di6 = di6_reg;
+		wr6 = wr6_reg;
+		stream = stream_reg;
+		stream_reg = data_head;
+		adr_head_reg = adr_head_reg + 1;//624
+		rd_head_reg = 1;
+		wr6_reg      = 0;
+		rd6      = 0;
+	}
+	
+	sfg readb6 {
+		outen_reg = outen;
+		outval_reg = outval;
+		outnb_reg = outnb;
+		ad6 = ad6_reg;
+		di6 = di6_reg;
+		stream = 0;
+		do6_reg = do6;
+		ad6_reg = ad6_reg + 1;//624
+		rd_head_reg = 0;
+		rd6 = 1;
+		wr6 = wr6_reg;
+		wr6_reg = 0;
+	}
+	
+	sfg storeb6 {
+//		$display ("storeb6");
+	}
+	
+	sfg wait {
+//		$display ("wait");
+	}
+	
+	sfg head {
+//		$display ("head");
+	}
+	
+	always {
+		count = count + 1;
+		start = start_fdump;
+		outen_reg = outen;
+		outval_reg = outval;
+		outnb_reg = outnb;
+		adr_head = adr_head_reg;
+		rd_head = rd_head_reg;
+//		$display("outen_reg:", outen_reg, " outval_reg:", outval_reg, " outnb_reg:", outnb_reg, " ", count_data, " ", length, " ", di6, " ", wr6  );
+//			$display($hex,count, ":",data_shift, " ", length, " ", di6_reg," ", length + outnb_reg, " ", wr6, " ", outen_reg);
+//				$display(count, ":", stream);
+  }
+}
+
+////// FDUMP FSM //////
+fsm fdump_ctl(fdump_core) {
+   initial idle;
+   state wait, b6_store, write_head, write_data, write_tail_1, write_tail_2 ;
+		
+	 @idle (init) -> wait;	
+		
+	 @wait if (outen_reg) then (store_b6) -> b6_store;
+	      							else (init, wait) -> wait;
+	 
+	 @b6_store if (start) then ( store_b6, head ) -> write_head;
+	 														 else ( store_b6) -> b6_store;
+   	 
+	 @write_head if (adr_head_reg == 623) then (head_write_end) -> write_data; 
+	 												              else (head_write) -> write_head;
+	 
+	 @write_data if ((ad6_reg == count_data)&(num == num_fin)) then (data_write) -> write_tail_1;
+	                                                 else (data_write) -> write_data;
+	 
+	 @write_tail_1 (tail_write_1) -> write_tail_2;
+	 
+	 @write_tail_2 (tail_write_2) -> wait;
+	 
+}
+
+
+dp fdump (  in start_fdump : ns(1);
+           out ad6    : ns(10);
+           out wr6    : ns(1);
+           out rd6    : ns(1);
+           out di6    : ns(32);
+           out stream : ns(8);
+            in do6    : ns(32);
+            in outen  : ns(1);
+            in outval : ns(16);
+            in outnb  : ns(7) ) 
+            {
+            sig adr_head : ns(10);
+            sig rd_head : ns(1);
+            sig data_head: ns(32); 
+  use fdump_core (   start_fdump, ad6, wr6, rd6, di6, stream, do6, outen, outval,
+  									 outnb, adr_head, rd_head, data_head);
+  use fdump_head(adr_head, rd_head, data_head);
+}

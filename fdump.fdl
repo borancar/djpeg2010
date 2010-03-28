@@ -1,0 +1,289 @@
+dp huftob6 (  in start_fdump:ns(1);  
+		in  outen   : ns(1);
+	    in  outval  : ns(16);
+	    in  outnb   : ns(5);
+	    out di6     : ns(32);
+	    out wr6     : ns(1);
+	    out adw6    : ns(10);
+        out compare :ns(10)
+)
+
+	{
+
+
+	reg start_fdump_reg:ns(1);
+	reg outen_reg       : ns(1);
+	reg wr6_reg         : ns(1);
+
+	 reg writetob6 : ns(32);
+ 	 reg n           : ns(6);
+	 reg val         : ns(16);
+	 reg bb           : ns(32);
+     reg nbb          : ns (6);
+	 reg add_count    : ns(10);
+
+		always 
+		{
+
+		start_fdump_reg=start_fdump;
+		outen_reg = outen;
+		n = outnb;
+		val = outval;
+		wr6 = wr6_reg;
+                di6 = writetob6;
+		adw6 = add_count;
+		compare=add_count;
+		}
+
+
+	
+
+	sfg   buffertobb  {
+		bb = bb | (val << (32 - nbb - n));
+		nbb = nbb + n;
+		writetob6 = 0;
+		wr6_reg = 0;
+		add_count = (wr6_reg==1) ?add_count + 1 : add_count;
+		}
+
+	sfg   write_b6  {
+		writetob6 = bb | (val >> (nbb + n - 32));
+                wr6_reg = 1 ;
+		add_count = (wr6_reg==1) ?add_count + 1 : add_count;
+		bb = val <<  (64 -nbb -n);
+		nbb = nbb + n - 32 ;
+		}
+	
+	sfg  wait  {
+		bb = bb;
+		nbb = nbb;
+		writetob6 = 0;
+		wr6_reg = 0;
+		add_count = (wr6_reg==1) ?add_count + 1 : add_count;
+		
+		}
+      sfg trail{
+             writetob6=bb;
+             add_count = (wr6_reg==1) ?add_count + 1 : add_count;
+             //wr6_reg = 1 ;
+
+}
+
+	sfg  init{
+		bb = 0;
+		nbb = 0;
+		writetob6 = 0;
+		wr6_reg = 0;
+		add_count = 0;}
+		
+		$trace(add_count,"add_count.txt");
+}
+
+fsm huftob6_ctl(huftob6)
+	{ initial s0;
+         state s1,s2;
+         @s0 (init)->s1;
+         @s1 if (outen_reg == 1)then(buffertobb) -> s1;
+            else if((nbb+n) > 32) then(write_b6) ->s1;
+            else if(start_fdump_reg == 1) then (trail)-> s1;
+            else (wait)->s1;
+}
+dp fdump_out(
+             in start_fdump : ns(1);
+             in do6 : ns(32);
+             out add_r6: ns(10);
+             out rd6 : ns(1);
+             out stream : ns(8);
+             in compare2:ns(10)
+)
+{
+lookup header : ns(8)={
+255, 216, 255, 224, 0, 16, 74, 70, 73, 70, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 255, 219, 0, 67, 0, 16, 12, 11, 10, 12, 14, 14, 13, 14, 16, 24, 19, 16, 17, 18, 24, 22, 22, 24, 26, 40,
+ 51, 58, 40, 29, 37, 35, 49, 72, 64, 55, 56, 51, 57, 60, 61, 55, 69, 87, 68, 64, 78, 92, 95, 87, 81, 109, 80, 56, 62, 103, 104, 103, 98, 112, 121, 113, 77, 92, 120, 100, 103,
+ 101, 99, 255, 219, 0, 67, 1, 17, 18, 18, 24, 21, 24, 47, 26, 26, 47, 99, 66, 56, 66, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99,
+ 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 255, 192, 0, 17, 8, 0, 64, 0, 64, 3, 1, 33, 0, 2, 17, 1, 3, 
+17, 1, 255, 196, 0, 31, 0, 0, 1, 5, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 255, 196, 0, 181, 16, 0, 2, 1, 3, 3, 2, 4, 3, 5, 5, 4, 4, 0,
+ 0, 1, 125, 1, 2, 3, 0, 4, 17, 5, 18, 33, 49, 65, 6, 19, 81, 97, 7, 34, 113, 20, 50, 129, 145, 161, 8, 35, 66, 177, 193, 21, 82, 209, 240, 36, 51, 98, 114, 130, 9, 10, 22, 23,
+ 24, 25, 26, 37, 38, 39, 40, 41, 42, 52, 53, 54, 55, 56, 57, 58, 67, 68, 69, 70, 71, 72, 73, 74, 83, 84, 85, 86, 87, 88, 89, 90, 99, 100, 101, 102, 103, 104, 105, 106, 115,
+ 116, 117, 118, 119, 120, 121, 122, 131, 132, 133, 134, 135, 136, 137, 138, 146, 147, 148, 149, 150, 151, 152, 153, 154, 162, 163, 164, 165, 166, 167, 168, 169, 170, 178, 179, 
+180, 181, 182, 183, 184, 185, 186, 194, 195, 196, 197, 198, 199, 200, 201, 202, 210, 211, 212, 213, 214, 215, 216, 217, 218, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234,
+ 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 255, 196, 0, 31, 1, 0, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 255, 196, 0, 181, 
+17, 0, 2, 1, 2, 4, 4, 3, 4, 7, 5, 4, 4, 0, 1, 2, 119, 0, 1, 2, 3, 17, 4, 5, 33, 49, 6, 18, 65, 81, 7, 97, 113, 19, 34, 50, 129, 8, 20, 66, 145, 161, 177, 193, 9, 35, 51, 82,
+ 240, 21, 98, 114, 209, 10, 22, 36, 52, 225, 37, 241, 23, 24, 25, 26, 38, 39, 40, 41, 42, 53, 54, 55, 56, 57, 58, 67, 68, 69, 70, 71, 72, 73, 74, 83, 84, 85, 86, 87, 88, 89,
+ 90, 99, 100, 101, 102, 103, 104, 105, 106, 115, 116, 117, 118, 119, 120, 121, 122, 130, 131, 132, 133, 134, 135, 136, 137, 138, 146, 147, 148, 149, 150, 151, 152, 153, 154,
+ 162, 163, 164, 165, 166, 167, 168, 169, 170, 178, 179, 180, 181, 182, 183, 184, 185, 186, 194, 195, 196, 197, 198, 199, 200, 201, 202, 210, 211, 212, 213, 214, 215, 216, 217, 
+218, 226, 227, 228, 229, 230, 231, 232, 233, 234, 242, 243, 244, 245, 246, 247, 248, 249, 250, 255, 218, 0, 12, 3, 1, 0, 2, 17, 3, 17, 0, 63, 0} ;
+reg do6_reg :ns(32);
+reg i :ns(10);
+reg rd6_reg:ns(1);
+reg start_fdump_reg:ns(1);
+reg add_count:ns(10);
+reg stream_reg:ns(8);
+reg compare2_reg:ns(10);
+
+always
+{
+  rd6=rd6_reg;
+  start_fdump_reg=start_fdump;
+  add_r6=add_count;
+  stream=stream_reg;
+  compare2_reg=compare2;
+  do6_reg=do6;
+}
+sfg init {
+        add_count=0;
+        rd6_reg=0;
+        stream_reg=0;
+        i=0;
+}
+
+sfg init2 {
+	stream_reg = header(i);
+	i=i+1;
+}
+
+sfg  dump{
+        stream_reg = header(i); 
+        i = i + 1;
+        rd6_reg=0;
+		$display($hex, "JPEG-: ", stream_reg[7:4], stream_reg[3:0]);
+}
+
+sfg  dumpr{
+		stream_reg = header(i); 
+        i = i + 1;
+        rd6_reg=1;
+		add_count=0;
+		$display($hex, "JPEG-: ", stream_reg[7:4], stream_reg[3:0]);
+}
+
+sfg dumplast{
+			 stream_reg=header(i);
+             i=i+1;
+			 $display($hex, "JPEG: ", stream_reg[7:4], stream_reg[3:0]);
+			 $display("dumplast");
+}
+sfg dump_add0{
+         stream_reg =0;
+		 $display($hex, "JPEG: ", stream_reg[7:4], stream_reg[3:0]);
+}
+sfg read_b6 {
+    rd6_reg=1;
+}
+sfg dump1{
+	stream_reg=do6_reg[31:24];
+	$display($hex, "JPEG: ",  stream_reg[31:28], stream_reg[27:24]);
+}
+sfg dump2{
+	stream_reg=do6_reg[23:16];
+	$display($hex, "JPEG: ",  stream_reg[23:20], stream_reg[19:16]);
+}
+sfg dump3{
+	stream_reg=do6_reg[15:8];
+	$display($hex, "JPEG: ",  stream_reg[15:12], stream_reg[11:8]);
+}
+sfg dump4{
+	stream_reg=do6_reg[7:0];	
+	$display($hex, "JPEG: ",  do6_reg[7:4], do6_reg[3:0]);
+	$display("dump1");
+}
+
+sfg adr6_add{
+	add_count=add_count+1;
+}
+
+sfg trail1{
+    stream_reg=0xff;
+    rd6_reg=0;
+    add_count=add_count;
+	$display($hex, "JPEG: ",  stream_reg[7:4], stream_reg[3:0]);
+    
+}
+sfg trail2{
+    stream_reg=0xD9;
+    rd6_reg=0;
+    add_count=add_count;
+	$display($hex, "JPEG: ",  stream_reg[7:4], stream_reg[3:0]);
+}
+
+    $trace(stream_reg,"stream_reg.txt");
+
+}
+
+
+fsm fdump_out_ctl(fdump_out)
+{
+	initial s0;
+state s1,s2,s2i,s2ii,s3, s30,s4, s40,s5, s50,s6,s7;
+
+ @s0 (init) ->s1;
+ 
+@s1 if(start_fdump_reg==1) then (init2) ->s2;
+     else(init)->s1;
+ 
+@s2 if(i<620) then (dump)->s2;
+      else (dumpr) ->s2i;
+@s2i (dumplast) -> s2ii;
+@s2ii (dumplast) -> s3;
+
+@s3 if (stream_reg==0xff) then (dump1)->s30;
+     else (dump1)->s4;
+@s30 (dump_add0) ->s4;
+ 
+	@s4 if (stream_reg==0xff) then (dump2)->s40;
+ 	else (dump2,adr6_add)->s5;
+@s40 (dump_add0,adr6_add) ->s5;
+ 
+@s5 if (stream_reg==0xff) then (dump3)->s50;
+     else (dump3)->s6;
+@s50 (dump_add0,adr6_add) ->s6;
+		
+ @s6 if (add_count==compare2_reg) then (trail1)->s7;
+ 	else if(stream_reg==0xff) then (dump4,adr6_add)->s3;
+     else (dump4)->s3;
+ @s7 (trail2)->s0;
+     
+}
+
+dp fdump(  in start_fdump : ns(1);
+           out ad6    : ns(10);
+           out wr6    : ns(1);
+           out rd6    : ns(1);
+           out di6    : ns(32);
+           out stream : ns(8);
+            in do6    : ns(32);
+            in outen  : ns(1);
+            in outval : ns(16);
+            in outnb  : ns(5))
+ {      sig adw6:ns(10);
+        sig add_r6:ns(10);
+	sig compare3:ns(10);	
+
+		use huftob6(start_fdump, outen ,outval ,outnb,di6,wr6,adw6,compare3  );
+        use fdump_out(start_fdump,do6 ,add_r6,rd6,stream,compare3);
+
+	sfg read{
+		ad6 = add_r6;
+	}
+	sfg write{
+		ad6 = adw6;
+	}
+
+	reg start : ns(1);
+	always{
+		start=start_fdump;
+	}
+
+}
+//hardwired fdump_ctl(fdump){run;}
+
+fsm fdump_ctl(fdump)
+{
+		initial s0;
+		state s1;
+		
+		@s0 if (start==1) then (read) -> s1;
+			else (write) -> s0;
+
+		@s1 (read) -> s1;		
+}

@@ -1,0 +1,22 @@
+/////////////////////////////////// 
+//  b5 for HJ81 by K.Sakiyama    //
+//    ver0.0 22th of April, 2005 //
+/////////////////////////////////// 
+
+/////// b5y1 : Buffer5(Y1/Y2/U/V) (Single Buffer of 12bitx8word SRAM) 
+
+ipblock b5y1(in  address  : ns(6); in  wr,rd : ns(1);
+             in  idata    : tc(12); out odata   : tc(12)) {
+  iptype "ram"; ipparm "wl=12"; ipparm "size=64"; }
+
+ipblock b5y2(in  address  : ns(6); in  wr,rd : ns(1);
+             in  idata    : tc(12); out odata   : tc(12)) {
+  iptype "ram"; ipparm "wl=12"; ipparm "size=64"; }
+
+ipblock b5u (in  address  : ns(6); in  wr,rd : ns(1);
+             in  idata    : tc(12); out odata   : tc(12)) {
+  iptype "ram"; ipparm "wl=12"; ipparm "size=64"; }
+
+ipblock b5v (in  address  : ns(6); in  wr,rd : ns(1);
+             in  idata    : tc(12); out odata   : tc(12)) {
+  iptype "ram"; ipparm "wl=12"; ipparm "size=64"; }

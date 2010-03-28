@@ -1,0 +1,54 @@
+#include "rgbyuv.fdl"
+
+dp rgbyuv_test(out start_rgbyuv			: ns(1);
+           in fin_rgbyuv			: ns(1);
+          out dout1_r, dout1_g, dout1_b		: ns(8);
+           in ad1r_r,  ad1r_g,  ad1r_b		: ns(9);
+           in rd1_r,   rd1_g,   rd1_b		: ns(1);
+           in din2_y1, din2_y2, din2_u, din2_v	: ns(8);
+           in ad2w_y1, ad2w_y2, ad2w_u, ad2w_v	: ns(9);
+           in wr2_y1,  wr2_y2,  wr2_u,  wr2_v	: ns(1) ) 
+{
+	reg fin : ns(1);
+	
+	sfg start {
+		$display("Start, cycle: ", $cycle);
+		start_rgbyuv = 1;
+	}
+	
+	sfg mem_out {
+		dout1_r = 0;
+		dout1_g = 0;
+		dout1_b = 0;
+	}
+	
+	sfg run {
+		start_rgbyuv = 1;
+		fin = fin_rgbyuv;
+		$display("Cycle: ", $cycle);
+		$display("Addr to read: ", ad1r_r, ", flag: ", rd1_r);
+		$display("Addr to write: ", ad2w_y1, ", flag: ", wr2_y1);
+		$display("(Y, U, V): (", din2_y1, ",", din2_u, ",", din2_v, ")");
+		$display("Finished: ", fin_rgbyuv);
+	}
+	
+	sfg idle {
+		start_rgbyuv = 0;
+	}
+}
+
+fsm rgbyuv_test_ctl(rgbyuv_test) {
+	initial s0;
+	state s1, s2, s3;
+	
+	@s0 (idle, mem_out) -> s1;
+	@s1 (start, mem_out) -> s2;
+	@s2 if(fin_rgbyuv) 	then	(run, mem_out) -> s3;
+		else				(run, mem_out) -> s2;
+	@s3 (idle, mem_out, idle) -> s3;
+}
+
+system S {
+	rgbyuv(start_rgbyuv, fin_rgbyuv, dout1_r, dout1_g, dout1_b, ad1r_r, ad1r_g, ad1r_b, rd1_r, rd1_g, rd1_b, din2_y1, din2_y2, din2_u, din2_v, ad2w_y1, ad2w_y2, ad2w_u, ad2w_v, wr2_y1,  wr2_y2,  wr2_u,  wr2_v);
+	rgbyuv_test(start_rgbyuv, fin_rgbyuv, dout1_r, dout1_g, dout1_b, ad1r_r, ad1r_g, ad1r_b, rd1_r, rd1_g, rd1_b, din2_y1, din2_y2, din2_u, din2_v, ad2w_y1, ad2w_y2, ad2w_u, ad2w_v, wr2_y1,  wr2_y2,  wr2_u,  wr2_v);
+}

@@ -1,0 +1,238 @@
+dp main ( in fin_8ln0, fin_rgb0, fin_dct0, fin_qnt0, fin_huf0 : ns(1);
+          out bufsel2, bufsel3, bufsel4 : ns(1);
+          out start_rgb, start_dct, start_qnt, start_huf, start_dmp : ns(1) )
+{
+	reg fin_8ln,  fin_rgb,  fin_dct,  fin_qnt,  fin_huf  : ns(1);
+	reg bufs2_reg, bufs3_reg, bufs4_reg : ns(1);
+	
+	reg rgb_reg, dct_reg, qnt_reg, huf_reg, dmp_reg : ns(1);
+	
+	reg c4 : ns(2);
+	reg c5 : ns(4);
+
+	always {
+		start_rgb=rgb_reg;
+		start_dct=dct_reg;
+		start_qnt=qnt_reg;
+		start_huf=huf_reg;
+		start_dmp=dmp_reg;
+
+		bufsel2=bufs2_reg;
+		bufsel3=bufs3_reg;
+		bufsel4=bufs4_reg;
+
+		fin_8ln=fin_8ln0;
+		fin_rgb=fin_rgb0;
+		fin_dct=fin_dct0;
+		fin_qnt=fin_qnt0;
+		fin_huf=fin_huf0;
+	}
+	
+	$trace(fin_rgb,"fin_rgb.txt");
+
+	sfg init {
+		rgb_reg=0;
+		dct_reg=0;
+ 		qnt_reg=0;
+ 		huf_reg=0;
+ 		dmp_reg=0;
+		bufs2_reg=0;
+		bufs3_reg=0;
+		bufs4_reg=0;
+		c4=0;
+		c5=0;
+	}
+	
+	sfg startRGB{
+		rgb_reg=1;
+	}
+	sfg stopRGB{
+		rgb_reg=0;
+	}
+	sfg startDCT{
+		dct_reg=1;
+	}
+	sfg stopDCT{
+		dct_reg=0;
+	}
+	sfg startQNT{
+		qnt_reg=1;
+	}
+	sfg stopQNT{
+		qnt_reg=0;
+	}
+	sfg startHUF{
+		huf_reg=1;
+	}
+	sfg stopHUF{
+		huf_reg=0;
+	}
+	sfg startDMP{
+ 		dmp_reg=1;
+	}
+	sfg stopDMP{
+		dmp_reg=0;
+	}	
+
+	sfg flipB2 {
+		bufs2_reg=~bufs2_reg;
+	}
+	sfg flipB3 {
+		bufs3_reg=~bufs3_reg;
+	}
+	sfg flipB4 {
+		bufs4_reg=~bufs4_reg;
+	}
+
+	sfg idle {
+		rgb_reg=0;
+		dct_reg=0;
+		qnt_reg=0;
+		huf_reg=0;
+		dmp_reg=0;
+	}	
+	sfg startRGB_DCT{
+		rgb_reg=1;
+		dct_reg=1;
+	}
+	sfg startRGB_DCT_QNT{
+		rgb_reg=1;
+		dct_reg=1;
+		qnt_reg=1;
+	}
+	sfg startRGB_DCT_QNT_HUF{
+		rgb_reg=1;
+		dct_reg=1;
+		qnt_reg=1;
+		huf_reg=1;
+	}
+	
+	sfg startDCT_QNT_HUF{
+		dct_reg=1;
+		qnt_reg=1;
+		huf_reg=1;
+	}
+
+	sfg startQNT_HUF{
+		qnt_reg=1;
+		huf_reg=1;
+	}
+	
+	sfg incC4 {
+		c4=c4+1;
+	}
+	sfg incC5 {
+		c5=c5+1;
+	}
+
+	sfg alldone {
+		$display("All done");
+	}
+
+	$trace(c4,"c4.txt");
+
+}
+
+///// MAIN FSM /////
+fsm main_ctl(main) {
+
+	initial s0;
+	state s1, s2, s2i, s3, s4, s4w, s5, s5i, s6, s6i, s6w, s7, s8, s9, s9i, s10, s10i, s10ii, s11, s11i, s12, s12i, s12ii, s13, s13i, s13ii, s14, s15, s16, s17, s18, s19, s20, s21, s30, s31, s31h, s32, s33, s40;
+	
+	@s0 if (fin_8ln) then (startRGB) -> s1;
+		else (init) -> s0;
+
+	@s1 if (fin_rgb) then (startRGB_DCT,flipB2) -> s2i;
+		else (idle)-> s1;
+
+	@s2i (idle) -> s2;
+
+	@s2 if (fin_rgb & fin_dct) then (startRGB_DCT_QNT,flipB2,flipB3) -> s3;
+		else (idle)-> s2;
+
+	@s3 if (fin_rgb & fin_dct & fin_qnt) then (startRGB_DCT_QNT_HUF,flipB2,flipB3,flipB4) -> s4;
+		else (idle)-> s3;
+
+	@s4w (idle) -> s4;
+
+	@s4 if (fin_rgb & fin_dct & fin_qnt & fin_huf & fin_8ln) then (idle) -> s5i;
+	    else (idle) -> s4;
+	   
+	@s5i (idle) -> s5;
+
+	@s5 (startRGB_DCT_QNT_HUF,flipB2,flipB3,flipB4,incC4) -> s6i;
+	
+	@s6i (idle) -> s6w;
+			
+	@s6 if (fin_rgb & fin_dct & fin_qnt & fin_huf) then (startRGB_DCT_QNT_HUF,flipB2,flipB3,flipB4,incC4) -> s6w;
+	    else (idle) -> s6;
+
+	@s6w if (fin_rgb | fin_dct | fin_qnt | fin_huf) then (idle) -> s6w;
+		else (idle) -> s7;
+		
+ 	@s7 if (c4==0) then (idle,incC5) -> s8;
+ 		else (idle) -> s6;
+	
+	@s8 if (c5==7) then (idle) -> s9i;
+		else (idle) -> s4w;
+
+	@s9i (idle) -> s9;
+	
+	//-------------------------------------------
+	
+	@s9 if (fin_rgb & fin_dct & fin_qnt & fin_huf) then (idle) -> s30;
+		 else (idle) -> s9;
+		 
+	
+	@s30 (startRGB_DCT_QNT_HUF,flipB2,flipB3,flipB4,incC4) -> s31h;
+	
+	//handshake
+	@s31h if (fin_rgb | fin_dct | fin_qnt | fin_huf) then (idle) -> s31h;
+		else (idle) -> s31;
+	
+	
+ 	@s31 if (c4==0) then (idle) -> s32;
+ 		else (idle) -> s9;	
+
+	@s32 (idle) -> s10ii;
+	
+	@s10ii if (fin_rgb & fin_dct & fin_qnt & fin_huf) then (idle) -> s10i;
+		else (idle) -> s10ii;
+	
+	//------------------------------------------
+ 	@s10i (startDCT_QNT_HUF, flipB2,flipB3,flipB4) -> s10;
+
+	//handshake
+	@s10 if(fin_dct | fin_qnt | fin_huf) then (idle) -> s10;
+		else (idle) -> s11;
+ 	
+ 	@s11 if (fin_dct & fin_qnt & fin_huf) then (idle) -> s12i;
+ 		else (idle) -> s11;
+	
+	@s12i (idle) -> s12;
+
+ 	@s12 (startQNT_HUF, flipB3,flipB4) -> s13;
+ 
+	//handshake
+	@s13 if (fin_qnt | fin_huf) then (idle) -> s13;
+		 else (idle) -> s14;
+ 
+	@s14 if (fin_qnt & fin_huf) then (idle) -> s11i;
+ 		else (idle) -> s14;
+
+	@s11i (idle) -> s16;
+	
+ 	@s16 (startHUF, flipB4) -> s17;
+ 
+	//handshake
+	@s17 if (fin_huf) then (idle)-> s17;
+		else (idle) -> s18;
+ 
+ 	@s18 if (fin_huf) then (idle) -> s19;
+ 		else (idle) -> s18;
+
+	@s19 (startDMP) -> s20;
+	@s20 (startDMP) -> s21;
+	@s21 (idle)-> s21;
+		
+}

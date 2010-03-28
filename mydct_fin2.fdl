@@ -1,0 +1,326 @@
+/////// You need to specify XXX depending on your fixed-point refinement
+/////// You need to specify XXX depending on your fixed-point refinement
+/////// You need to specify XXX depending on your fixed-point refinement
+
+
+////// DCT DATA PATH //////
+dp dct  ( in start_dct : ns(1); 
+          out fin_dct : ns(1);
+          in dout2 : ns(8);
+	  out ad2r : ns(6);
+          out rd2 : ns(1);
+	  out din3 : tc(15); 
+          out ad3w : ns(6);   
+          out wr3 : ns(1);
+          in dout5 : tc(15);
+          out din5 : tc(15); 
+          out ad5  : ns(6); 
+          out rd5 : ns(1); 
+          out wr5 : ns(1) )
+{
+   reg bias : ns(9);
+   reg start : ns(1);
+   reg i : ns(3);
+   reg j : ns(3);
+   reg counter : ns(8);
+   reg m,n,p : ns(6);
+   reg t0, t1, t2, t3, t4, t5, t6, t7: tc(15);
+   sig temp0, temp1, temp2, temp3, temp4, temp5, temp6, temp7 : tc(15);
+   reg tout0, tout1, tout2, tout3, tout4, tout5, tout6, tout7 : tc(15);
+
+//   $trace (counter,"counter");  
+//   $trace (t0,"t0");
+//   $trace (t1,"t1");
+//   $trace (t2,"t2");
+//   $trace (t3,"t3");
+//   $trace (t4,"t4");
+//   $trace (t5,"t5");
+//   $trace (t6,"t6");
+//   $trace (t7,"t7");
+//   $trace (temp0,"temp0");
+//   $trace (temp1,"temp1");
+//   $trace (temp2,"temp2");
+//   $trace (temp3,"temp3");
+//   $trace (temp4,"temp4");
+//   $trace (temp5,"temp5");
+//   $trace (temp6,"temp6");
+//   $trace (temp7,"temp7");
+//   $trace (tout0,"tout0");
+//   $trace (tout1,"tout1");
+//   $trace (tout2,"tout2");
+//   $trace (tout3,"tout3");
+//   $trace (tout4,"tout4");
+//   $trace (tout5,"tout5");
+//   $trace (tout6,"tout6");
+//   $trace (tout7,"tout7");
+//   $trace (i,"i");
+//   $trace (j,"j");
+ 
+   sfg init
+   {
+      bias=256; ad2r=0; rd2=0, din3=0; ad3w=0; wr3=0; din5=0; ad5=0; rd5=0; wr5=0; fin_dct=0; counter=0; i=0; m=0; n=0; p=0; start=start_dct; j=i;
+   }
+   //sfg add_ad5
+   //{
+   //   n=n+1; ad5=n;
+   //}
+   sfg clear_ad5
+   {
+      n=0;
+   }
+   sfg count1
+   {
+      counter=counter+1; m=m+1; ad2r=m; n=n+8; ad5=n; i=i+1; ad3w=0; j=i;
+   }
+   sfg count4
+   {
+      counter=counter+1; m=m+1; ad2r=m; n=0; ad5=n; i=i+1; ad3w=0; j=i;
+   }
+   //sfg count5
+   //{
+   //   counter=counter+1; m=0; ad2r=m; n=n+8; ad5=n; i=i+1; ad3w=0; j=i;
+   //}
+   //sfg count4
+   //{
+   //  counter=counter+1; m=m+1; ad2r=m; n=n+8; ad5=n; i=0; ad3w=0;
+   //}
+   sfg count3
+   {
+      counter=counter+1; m=m+1; ad2r=m; n=n+9; ad5=n; i=i+1; ad3w=0; j=i;
+   }
+   sfg count2
+   {
+      counter=counter+1; p=p+1; ad3w=p; n=n+1; ad5=n; i=i+1; ad2r=0; j=i;
+   }
+   sfg temp
+   {
+      temp0 = 0;
+      temp1 = 0;
+      temp2 = 0;
+      temp3 = 0;
+      temp4 = 0;
+      temp5 = 0;
+      temp6 = 0;
+      temp7 = 0;
+   }
+   //always {
+   //$display ($dec,temp0," ",$cycle);
+   //$display ($dec,temp1," ",$cycle);
+   //$display ($dec,temp2," ",$cycle);
+   //$display ($dec,temp3," ",$cycle);
+   //$display ($dec,temp4," ",$cycle);
+   //$display ($dec,temp5," ",$cycle);
+   //$display ($dec,temp6," ",$cycle);
+   //$display ($dec,temp7," ",$cycle);
+
+//	}
+   sfg dct_run
+   {
+      temp0=t0+t7-bias;
+      temp1=t1+t6-bias;
+      temp2=t2+t5-bias;
+      temp3=t3+t4-bias;
+      temp4=t3-t4;
+      temp5=t2-t5;
+      temp6=t1-t6;
+      temp7=t0-t7;
+      tout0=temp0+temp1+temp2+temp3;
+      tout4=temp0-temp1-temp2+temp3;
+      tout2=temp0-temp3+(((temp0+temp1-temp2-temp3)*23170)>>15);
+      tout6=temp0-temp3-(((temp0+temp1-temp2-temp3)*23170)>>15);
+      tout3=temp7-(((temp5+temp6)*23170)>>15)-(((temp4+temp5)*17734)>>15)-(((temp4+temp5-temp6-temp7)*12540)>>15);
+      tout5=temp7-(((temp5+temp6)*23170)>>15)+(((temp4+temp5)*17734)>>15)+(((temp4+temp5-temp6-temp7)*12540)>>15);
+      tout1=temp7+(((temp5+temp6)*23170)>>15)+(((temp6+temp7)*42813)>>15)+(((temp4+temp5-temp6-temp7)*12540)>>15);
+      tout7=temp7+(((temp5+temp6)*23170)>>15)-(((temp6+temp7)*42813)>>15)-(((temp4+temp5-temp6-temp7)*12540)>>15);
+   }
+   //sfg display_tout
+   //{
+   //   $display("    t0=", t0,"    t1=", t1,"    t2=", t2,"    t3=", t3,"    t4=", t4,"    t5=", t5,"    t6=", t6,"    t7=", t7);
+   //   $display("    temp0=", temp0,"    temp1=", temp1,"    temp2=", temp2,"    temp3=", temp3,"    temp4=", temp4,"    temp5=", temp5,"    temp6=", temp6,"    temp7=", temp7);
+   //   $display("    tout0=", tout0,"    tout1=", tout1,"    tout2=", tout2,"    tout3=", tout3,"    tout4=", tout4,"    tout5=", tout5,"    tout6=", tout6,"    tout7=", tout7);
+   //}
+   sfg change_bias
+   {
+      bias=0;
+   }
+   sfg rd_2
+   {
+      t7=dout2;
+      t6=t7;
+      t5=t6;
+      t4=t5;
+      t3=t4;
+      t2=t3;
+      t1=t2;
+      t0=t1;
+   }
+   sfg wr_5
+   {
+      din5=tout0;
+      tout0=tout1;
+      tout1=tout2;
+      tout2=tout3;
+      tout3=tout4;
+      tout4=tout5;
+      tout5=tout6;
+      tout6=tout7;
+   }
+   sfg rd_5
+   {
+      t0=dout5;
+      t1=t0;
+      t2=t1;
+      t3=t2;
+      t4=t3;
+      t5=t4;
+      t6=t5;
+      t7=t6;
+   }
+   sfg wr_3
+   {
+      din3=tout0;
+      tout0=tout1;
+      tout1=tout2;
+      tout2=tout3;
+      tout3=tout4;
+      tout4=tout5;
+      tout5=tout6;
+      tout6=tout7;
+   }
+   sfg s251
+   {
+      rd2=1; wr5=0; rd5=0; wr3=0; fin_dct=0; din3=0; din5=0; 
+   }
+   sfg s252
+   {
+      rd2=1; wr5=1; rd5=0; wr3=0; fin_dct=0; din3=0;
+   }
+   sfg s253
+   {
+      rd2=0; wr5=1; rd5=0; wr3=0; fin_dct=0; din3=0;
+   }
+   sfg s531
+   {
+      rd2=0; wr5=0; rd5=1; wr3=0; fin_dct=0; din5=0; din3=0;
+   }
+   sfg s532
+   {
+      rd2=0; wr5=0; rd5=1; wr3=1; fin_dct=0; din5=0;
+   }
+   sfg s533
+   {
+      rd2=0; wr5=0; rd5=0; wr3=1; fin_dct=0; din5=0;
+   }
+   sfg sdct
+   {
+      rd2=0; wr5=0; rd5=0; wr3=0; fin_dct=0; din3=0; din5=0; ad2r=m; ad5=n; ad3w=p;
+   }
+   sfg sdct2
+   {
+      rd2=0; wr5=0; rd5=0; wr3=0; fin_dct=0; din3=0; din5=0; ad2r=m; ad5=n; ad3w=0; p=0;
+   }
+   sfg finish
+   {
+      rd2=0, wr5=0, rd5=0, wr3=0, fin_dct=1; din3=0;  din5=0; ad3w=0; ad5=0; ad2r=0; start=start_dct;
+   }
+}
+
+////// DCT FSM //////
+fsm dct_ctl(dct) {
+  initial s0;
+  state  s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15, s16;
+
+  @s0  ( init,temp ) -> s1;
+  @s1  if (start<1) then ( init,temp ) ->s1;
+                else ( init,temp ) ->s16;
+  @s16 (rd_2, count4, s251, temp) ->s2;
+  @s2  if (j<7) then ( rd_2, count1, s251,temp ) -> s2;
+                else ( rd_2, count1, s251,temp ) -> s9;
+  @s9  (dct_run, sdct ) -> s3;
+  @s3  if (j<7) then ( rd_2, wr_5, count1, s252,temp ) -> s3;
+                else if ( counter<63 ) then ( rd_2, wr_5, count3, s252,temp ) -> s9;
+                else ( rd_2, wr_5, count3, s252,temp ) -> s10;
+  @s10  (dct_run, sdct) -> s4;
+  @s4  if (j<7) then ( wr_5, count1, s253,temp ) -> s4;
+                else ( wr_5, count1, s253, change_bias,temp ) -> s13;
+  @s13 (clear_ad5, sdct, temp) ->s5;
+  @s5  if (j<7) then ( rd_5, count2, s531,temp) -> s5;
+                else ( rd_5, count2, s531,temp) ->s11;
+  @s11  (dct_run, sdct2) -> s6;
+  @s14  (dct_run, sdct) -> s6;
+  @s6  if (j<7) then ( rd_5, wr_3, count2, s532,temp ) -> s6;
+                else if ( counter<127 ) then ( rd_5, wr_3, count2, s532,temp ) -> s14;
+                else ( rd_5, wr_3, count2, s532,temp ) -> s12;
+  @s12  (dct_run, sdct) -> s7;
+  @s7  if (j<7) then ( wr_3, count2, s533,temp ) -> s7;
+                else ( wr_3, count2, s533,temp ) -> s8;
+  @s8  (finish, temp) ->s15;
+  @s15 if (start<1) then (finish, temp) -> s15;
+                else ( init, temp ) -> s16;
+
+}
+dp dcty1 : dct
+dp dcty2 : dct
+dp dctu  : dct
+dp dctv  : dct
+
+//dp test_bench(  //out dout5:tc(9);
+//                out dout2:ns(8);
+//                out start_dct:ns(1))
+//{
+//    reg j:ns(8);
+//    sfg run{
+//    //   data_out=1;
+//       start_dct=1;
+//        dout2=254;
+//        //dout2=j*10;
+//        j=j+1;
+//        }
+//    sfg run1{
+//    //   data_out=1;
+//       start_dct=1;
+//        dout2=0;
+//        //dout2=j*10;
+//        j=j+1;
+//        }
+//    sfg init{
+//    //   data_out=1;
+//       start_dct=0;
+//        dout2=0;
+//        //dout2=j*10;
+//        //j=j+1;
+//        }
+//}
+
+//fsm test_ctl(test_bench){
+//  initial s0;
+//  state s1,s2;
+//  @s0 (init) ->s1;
+//  @s1 if (j<6) then (run) ->s1;
+//      else (run) ->s2;
+//  @s2 (run1) ->s2;
+//}
+
+//hardwired test(test_bench){run;run1;init;}
+
+//dp top{
+
+//    sig start_dct : ns(1); 
+//    sig fin_dct : ns(1);
+//    sig dout2 : ns(8); 
+//    sig ad2r : ns(6); 
+//    sig rd2 : ns(1);
+//    sig din3 : tc(15); 
+//    sig ad3w : ns(6);                 
+//    sig wr3 : ns(1);
+//    sig dout5 : tc(15); 
+//    sig din5 : tc(15); 
+//    sig ad5  : ns(6); 
+//    sig rd5 : ns(1); 
+//    sig wr5 : ns(1);
+//    use test_bench(dout2, start_dct);
+//    use dct(start_dct, fin_dct, dout2, ad2r, rd2, din3, ad3w, wr3, dout2, din5, ad5, rd5, wr5);   
+//    }
+//system S{
+//    top;
+//    }

@@ -1,0 +1,360 @@
+////// DCT DATA PATH //////
+
+
+dp dct_dp  ( in start_dct : ns(1); 
+          out fin_dct : ns(1);
+          in dout2 : ns(8);
+	  out ad2r : ns(6);
+          out rd2 : ns(1);
+	      out din3 : tc(15); 
+          out ad3w : ns(6);   
+          out wr3 : ns(1);
+          in dout5 : tc(15);
+          out din5 : tc(15); 
+          out ad5  : ns(6); 
+          out rd5 : ns(1); 
+          out wr5 : ns(1) )
+{
+lookup FA : ns(17) = { 0,46341, 35468,46341,85627,25080};
+
+
+//floating point to fixed point refinement, watch out to shift them back
+
+        sig x0, x1, x2, x3, t0, t1, t2, t3, t4, t5, t6, t7: tc(16);
+	sig x00, x10, x20, x30: tc(16);
+	sig t01,t02,t11, t21, t31, t41, t51, t61, t71,t01_shift,t02_shift,t31_shift,t11_shift,t21_shift, t11_fin, t21_fin: tc(32);
+	sig bias_sig : ns(9);
+	reg row0,row1,row2,row3,row4,row5,row6,row7 :tc(16);
+	reg counter, counter_b3, counter_b5: ns(6);
+	reg row_res0,row_res1,row_res2,row_res3,row_res4,row_res5,row_res6,row_res7 : tc(16);
+	reg start :ns(1);//start the DCT register
+	reg fin : ns(1);
+	
+	//$trace(counter_b3, "counter_b3.txt");
+
+sfg init
+{
+	fin = 0;
+	ad2r=0;
+	rd2=0;
+	din3=0;
+	ad3w=0;
+	wr3=0;
+	din5=0;
+	ad5=0;
+	rd5=0;
+	wr5=0;
+}
+
+sfg idle
+{
+
+}
+
+sfg set_finish
+{
+          fin=1;  //Main
+}
+
+always
+{
+	fin_dct=fin;
+}
+
+sfg no_input
+{
+	   ad2r = 0; 	//B3
+	   rd2 =0;	//B2
+}
+
+sfg no_output
+{
+	   ad3w =0;	//B3
+           wr3=0;	//B3
+           din3=0;    //B3
+}
+
+sfg no_temp
+{
+	  ad5=0; 	//B3
+	  rd5=0; 	//B5
+	  wr5=0;	//B5
+          din5=0;	//B5
+}
+
+
+
+sfg  wait_start //starting the DCT
+{
+	start=start_dct;
+}
+
+sfg dir_counter//increment the address
+{
+	counter=counter+1;
+}
+
+sfg set_counter
+{
+	counter=256;
+}
+sfg inv_counter
+{
+	counter=counter-1;
+}
+
+sfg reset_counter
+{
+	counter=0;
+}
+
+sfg dir_counter_b5//increment the address
+{
+	counter_b5=counter_b5+1;
+	$display("counter_b5=", counter_b5);
+}
+
+sfg dir_counter_b3//increment the address
+{
+	counter_b3=counter_b3+1;
+        $display("counter_b3=", counter_b3);
+}
+
+sfg  set_fin_dct//finish the DCT, send signal to Main
+{
+	fin_dct=1;
+}
+
+sfg bias_on
+{
+	bias_sig = 256;
+}
+
+sfg bias_off
+{
+	bias_sig = 0;
+}
+
+sfg t
+{
+	$display("count=", counter);
+  	t0 = row0 + row7 - bias_sig;
+	$display("t0=", t0);
+  	t7 = row0 - row7;
+  	$display("t7=", t7);
+ 	t1 = row1 + row6 - bias_sig;
+	$display("t1=", t1);
+  	t6 = row1 - row6;
+	$display("t6=", t6);
+  	t2 = row2 + row5 - bias_sig;
+	$display("t2=", t2);
+  	t5 = row2 - row5;
+	$display("t5=", t5);
+  	t3 = row3 + row4 - bias_sig;
+	$display("t3=", t3);
+  	t4 = row3 - row4;
+	$display("row0=", row0);
+	$display("row1=", row1);
+	$display("row2=", row2);
+	$display("row3=", row3);
+	$display("row4=", row4);
+	$display("row5=", row5);
+	$display("row6=", row6);
+    $display("row7=", row7);	
+}
+  
+  /* even part */
+sfg even 
+{
+  	x0 = t0 + t3;
+	$display("x0=", x0);
+  	x2 = t1 + t2;
+	$display("x2=", x2);
+  	row_res0 = x0 + x2;
+	$display("row_res0=", row_res0);
+  	row_res4 = x0 - x2;
+	$display("row_res4", row_res4);	
+  	x1 = t0 - t3;
+	$display("x1=", x1);
+  	x3 = t1 - t2;
+	$display("x3=", x3);
+  	t02 = (x1 + x3) * FA(1);
+	$display("t02=", t02);
+	t02_shift=t02 >>16;
+	$display("t02_shift=", t02_shift);
+  	row_res2 = x1 + t02_shift;
+	$display("row_res2=", row_res2);
+  	row_res6 = x1 - t02_shift;
+	$display("row_res6=", row_res6);
+}
+  
+  /* odd part */
+ sfg odd
+{
+	x00 = t4 + t5;
+	$display("x00=", x00);
+ 	x10 = t5 + t6;
+	$display("x10=", x10);
+ 	x20 = t6 + t7;
+    $display("x20=", x20);
+  	t31 = x10 * FA(1);
+	$display("t31=", t31);
+ 	t31_shift=t31 >>16;
+	$display("t31_shift=", t31_shift);
+    t41 = t7 - t31_shift;
+    $display("t41=", t41);
+  	t01 = (x00 - x20) * FA(5);
+	t01_shift=t01>>16;
+  	$display("t01_shift=", t01_shift);
+	t11 = x00 * FA(2);
+	t11_shift=t11>>16;
+	t11_fin=t11_shift + t01_shift;
+	$display("t11_shift=", t11_shift);
+  	row_res3 = t41 - t11_fin;
+	$display("row_res3=", row_res3);
+  	row_res5 = t41 + t11_fin;
+	$display("row_res5=", row_res5);
+  
+  	t71 = t7+ t31_shift;//
+	$display("t71=", t71);
+  	t21 = x20 * FA(4);
+	t21_shift=t21>>16;
+	t21_fin=t21_shift+t01_shift;
+	$display("t21_shift=", t21_shift);
+  	row_res1 = t71 + t21_fin;
+	$display("row_res1=", row_res1);
+  	row_res7 = t71 - t21_fin;
+	$display("row_res7=", row_res7);
+}
+
+sfg read_row_b2
+{	
+	ad2r=counter;
+	rd2=1;
+
+	row7=dout2;
+	row6=row7;
+	row5=row6;
+	row4=row5;
+	row3=row4;
+	row2=row3;
+	row1=row2;
+	row0=row1;
+}
+
+sfg write_row_b5
+{
+	rd5=0;
+	wr5=1;
+	ad5=counter_b5;
+
+	din5=row_res0;
+	row_res0=row_res1;
+	row_res1=row_res2;
+	row_res2=row_res3;
+	row_res3=row_res4;
+	row_res4=row_res5;
+	row_res5=row_res6;
+	row_res6=row_res7;
+}
+
+//copy output of b5 to columns
+sfg read_column_b5
+{
+	wr5=0;
+	din5=0;
+	rd5=1;
+	ad5=counter_b5[2:0]#counter_b5[5:3];
+
+	row7=dout2;
+	row6=row7;
+	row5=row6;
+	row4=row5;
+	row3=row4;
+	row2=row3;
+	row1=row2;
+	row0=row1;
+}
+
+//copy output of second dct to buffer 3
+
+sfg write_row_b3
+{
+	wr3=1;
+	ad3w=counter_b3[2:0]#counter_b3[5:3];
+
+	din3=row_res0;
+	row_res0=row_res1;
+	row_res1=row_res2;
+	row_res2=row_res3;
+	row_res3=row_res4;
+	row_res4=row_res5;
+	row_res5=row_res6;
+	row_res6=row_res7;
+}
+}
+////// DCT FSM //////
+fsm dct_ctl(dct_dp)
+{
+  initial s0;
+  state  s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s13,s14,s15,s16,s17,s18,s19,s20,s21,s22,s23,s24,s25,s26,s27,s28,s29,s30,s31,s32,s33,s34,s35,s36,s37,s38,s39,s40,s12,s212;
+
+  @s0  (init)->s1;
+  @s1   if(start) then (no_input,no_temp,no_output) -> s12;
+	else (wait_start,no_input,no_temp,no_output) -> s1;
+  @s12  (read_row_b2,dir_counter,no_output,no_temp)-> s2;
+  @s2   (read_row_b2,dir_counter,no_output,no_temp)-> s3;
+  @s3   (read_row_b2,dir_counter,no_output,no_temp)-> s4;
+  @s4   (read_row_b2,dir_counter,no_output,no_temp)-> s5;
+  @s5   (read_row_b2,dir_counter,no_output,no_temp)-> s6;
+  @s6   (read_row_b2,dir_counter,no_output,no_temp)-> s7;
+  @s7   (read_row_b2,dir_counter,no_output,no_temp)-> s8;
+  @s8   (read_row_b2,dir_counter,no_output,no_temp)-> s9;
+  @s9   (read_row_b2,no_output,no_temp)-> s10;
+
+  @s10  (t, odd, even,no_input,no_temp,no_output,bias_on)->s13;
+
+  @s13  (write_row_b5,dir_counter_b5,no_input,no_output)-> s14;
+  @s14  (write_row_b5,dir_counter_b5,no_input,no_output)-> s15;
+  @s15  (write_row_b5,dir_counter_b5,no_input,no_output)-> s16;
+  @s16  (write_row_b5,dir_counter_b5,no_input,no_output)-> s17;
+  @s17  (write_row_b5,dir_counter_b5,no_input,no_output)-> s18;
+  @s18	(write_row_b5,dir_counter_b5,no_input,no_output)-> s19;
+  @s19  (write_row_b5,dir_counter_b5,no_input,no_output)-> s20;
+  @s20  (write_row_b5,no_input,no_output)->s21;
+
+  @s21  if (counter == 0) then (idle,no_input,no_temp,no_output) -> s212;
+	else (idle,no_input,no_temp,no_output) -> s2;
+  @s212 (read_column_b5,dir_counter_b5,no_input,no_output)->s22;
+  @s22  (read_column_b5,dir_counter_b5,no_input,no_output)->s23;
+  @s23  (read_column_b5,dir_counter_b5,no_input,no_output)->s24;
+  @s24  (read_column_b5,dir_counter_b5,no_input,no_output)->s25;
+  @s25  (read_column_b5,dir_counter_b5,no_input,no_output)->s26;
+  @s26  (read_column_b5,dir_counter_b5,no_input,no_output)->s27;
+  @s27  (read_column_b5,dir_counter_b5,no_input,no_output)->s28;
+  @s28  (read_column_b5,dir_counter_b5,no_input,no_output)->s29;
+  @s29  (read_column_b5,no_input,no_output)->s30;
+
+  @s30  (t, odd, even,no_input,no_temp,no_output,bias_off)->s31;
+
+  @s31	 (write_row_b3,dir_counter_b3,no_input,no_temp)->s32;
+  @s32	 (write_row_b3,dir_counter_b3,no_input,no_temp)->s33;
+  @s33	 (write_row_b3,dir_counter_b3,no_input,no_temp)->s34;
+  @s34	 (write_row_b3,dir_counter_b3,no_input,no_temp)->s35;
+  @s35	 (write_row_b3,dir_counter_b3,no_input,no_temp)->s36;
+  @s36	 (write_row_b3,dir_counter_b3,no_input,no_temp)->s37;
+  @s37	 (write_row_b3,dir_counter_b3,no_input,no_temp)->s38;
+  @s38	 (write_row_b3,no_input,no_temp)->s39;
+
+  @s39  if (counter_b5 == 0) then (set_finish,no_input,no_temp,no_output) -> s40;
+	else (idle,no_input,no_temp,no_output) -> s22;
+
+  @s40	(no_input,no_temp,no_output) -> s0;
+}
+
+dp dcty1 : dct_dp
+dp dcty2 : dct_dp
+dp dctu  : dct_dp
+dp dctv  : dct_dp
+
+

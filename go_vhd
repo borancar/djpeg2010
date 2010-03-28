@@ -1,0 +1,6 @@
+#!/bin/csh -fx
+
+cpp -P jpeg.fdl > tmp.fdl
+fdlvhd -i tmp.fdl
+mv -f *.vhd VHDL
+rm tmp.fdl

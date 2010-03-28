@@ -1,0 +1,28 @@
+///// TEST BENCH /////
+ipblock testfile(out c, d1, d2, d3 : ns(8)) {
+  iptype "filesource";
+  ipparm "file=bunny_ppm.txt";
+  ipparm "wl=8";
+  ipparm "base=16";
+}  
+
+
+dp test_jpeg( out datar, datag, datab : ns(8);
+              out vsync, hsync, oddeven : ns(1) )
+{
+  sig ctrl, pixr, pixg, pixb : ns(8);
+  use testfile(ctrl, pixr, pixg, pixb);
+
+  sfg run  {
+             vsync = ctrl[0];   // VSYNC
+             hsync = ctrl[1];   // HSYNC
+		//hsync = 1;   // HSYNC
+             oddeven = ctrl[2]; // ODDEVEN
+             datar = pixr;      // DATA for RED 
+             datag = pixg;      // DATA for GREEN
+             datab = pixb;      // DATA for BLUE
+$display("TEST INPUT (R,G,B)=",datar,datag,datab," vsync=",vsync," hsync=",hsync," oddeven=",oddeven);
+	}
+}
+hardwired h_test_jpeg(test_jpeg) { run; }
+

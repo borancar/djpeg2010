@@ -1,0 +1,49 @@
+/////////////////////////////////// 
+//  b2 for HJ81 by K.Sakiyama    //
+//    ver0.0 22th of April, 2005 //
+/////////////////////////////////// 
+
+/////// b2 : Buffer 2(Y1) (Double Buffer of 8bitx8word SRAM(ram2a,ram2b)) 
+/////// Input data is by block scan, output data is by block scan
+/////// Switching R/W banks, bufsel2 is controlled by main fsm
+
+ipblock ram2a(in  address  : ns(6); in  wr,rd : ns(1);
+             in  idata    : ns(8); out odata   : ns(8)) {
+  iptype "ram"; ipparm "wl=8"; ipparm "size=64"; }
+
+ipblock ram2b(in  address  : ns(6); in  wr,rd : ns(1);
+             in  idata    : ns(8); out odata   : ns(8)) {
+  iptype "ram"; ipparm "wl=8"; ipparm "size=64"; }
+
+dp b2   ( in bufsel2 : ns(1);
+          in a2w, a2r : ns(6); in w2, r2 : ns(1);
+          in di2 : ns(8); out do2 : ns(8))
+{
+   sig a2a, a2b : ns(6);
+   sig w2a, r2a, w2b, r2b : ns(1);
+   sig di2a, do2a, di2b, do2b : ns(8);
+
+   use ram2a(a2a, w2a, r2a, di2a, do2a);
+   use ram2b(a2b, w2b, r2b, di2b, do2b);
+
+   sfg run {
+      a2a = (bufsel2)? a2r : a2w;
+      w2a = (bufsel2)? 0 : w2;
+      r2a = (bufsel2)? r2 : 0;
+      di2a = (bufsel2)? 0 : di2;
+   
+      a2b = (bufsel2)? a2w : a2r;
+      w2b = (bufsel2)? w2 : 0;
+      r2b = (bufsel2)? 0 : r2;
+      di2b = (bufsel2)? di2 : 0;
+   
+      do2 = (bufsel2)? do2a : do2b;
+$display ($cycle,"  bufsel2=",bufsel2,"  a2a=",a2a,"  w2a=",w2a,"  r2a=",r2a,"  di2a=",di2a,"  do2a=",do2a,
+                                      "  a2b=",a2b,"  w2b=",w2b,"  r2b=",r2b,"  di2b=",di2b,"  do2b=",do2b);
+   }
+}
+hardwired run_b2(b2) { run; }
+dp b2y1 : b2  
+dp b2y2 : b2  
+dp b2u : b2  
+dp b2v : b2  

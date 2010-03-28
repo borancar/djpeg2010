@@ -1,0 +1,384 @@
+$option "vcd"
+
+//Receives signed integer without the signbit
+//Magnitude has a maximum value of 7
+dp magnitude_dp( in v:ns(7); out mag:ns(3)){
+
+	sfg do_always{
+		mag = ( (v==0) ? 0 : (v[1:6] == 0 ? 1 : (v[2:6] == 0 ? 2 : (v[3:6] == 0 ? 3 : (v[4:6] == 0 ? 4 : (v[5:6] == 0 ? 5 : (v[6] == 0 ? 6 : 7)))))));
+	}
+}
+
+hardwired magnitude_hw(magnitude_dp){ do_always;}
+
+dp huf_dp(in start_huf : ns(1); out fin_huf : ns(1);
+		in do4_y1:tc(8); in do4_y2:tc(8);in do4_u:tc(8);in do4_v:tc(8); //Value of the pixel we read in buffer 4.
+		out a4r_y1, a4r_y2, a4r_u, a4r_v : ns(6);//Adres of the data we want to read from buffer 4.
+	  	out r4_y1, r4_y2, r4_u, r4_v  : ns(1); //Indicates which block we want to read from buffer 4.)
+		out outen  : ns(1);//The data on the dataline is valid data.
+          	out outval : ns(16);//Data for fdump !!!!
+          	out outnb  : ns(5))//Nb of bits outval bevat !!!!
+{
+//in start_huf : ns(1); out fin_huf : ns(1);
+//           in do4_y1, do4_y2, do4_u, do4_v : tc(XX);
+//          out a4r_y1, a4r_y2, a4r_u, a4r_v : ns(XX);
+//          out  r4_y1, r4_y2, r4_u, r4_v  : ns(1);
+//          out outen  : ns(1);
+//          out outval : ns(XX);
+//          out outnb  : ns(7) 
+
+	reg cnt:ns(7);// want gaat tot net iets meer als 64 tellen;
+	reg pix:tc(8);
+	reg level:tc(8);
+	reg level2:tc(8);
+	reg lpred:ns(8);
+	reg y1:ns(1);
+	reg y2:ns(1);
+	reg u:ns(1);
+	reg v:ns(1);
+	reg run:ns(6);
+	reg tablenb: ns(8);
+	reg tablenb2: ns(8);
+	reg e0: ns(16);
+	reg e1: ns(7);
+	reg write_next:ns(1);
+	reg cnt_blok_16:ns(3);
+	reg blok:ns(2);
+	reg pred_y:tc(8);
+	reg pred_u:tc(8);
+	reg pred_v:tc(8);
+	
+	reg start :ns(1);
+	
+	sig len:ns(4);
+
+	lookup ldht_val : ns(9) = {0, 2, 3, 4, 5, 6, 14, 30, 62, 126, 254, 510};
+	lookup ldht_nb : ns(4) = {2, 3, 3, 3, 3, 3, 4, 5, 6, 7, 8, 9};
+	lookup cdht_val : ns(11) = {0, 1, 2, 6, 14, 30, 62, 126, 254, 510, 1022, 2046};
+	lookup cdht_nb : ns(4) = {2, 2, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
+	lookup laht_val : ns(16) = {10, 0, 1, 4, 11, 26, 120, 248, 1014, 65410, 65411, 0, 0, 0, 0, 0, 0, 12, 27, 121, 502, 2038, 65412, 65413, 65414,
+				65415, 65416, 0, 0, 0, 0, 0, 0, 28, 249, 1015, 4084, 65417, 65418, 65419, 65420, 65421, 65422, 0, 0, 0, 0, 0, 0, 58,
+				503, 4085, 65423, 65424, 65425, 65426, 65427, 65428, 65429, 0, 0, 0, 0, 0, 0, 59, 1016, 65430, 65431, 65432, 65433, 65434,
+				65435, 65436, 65437, 0, 0, 0, 0, 0, 0, 122, 2039, 65438, 65439, 65440, 65441, 65442, 65443, 65444, 65445, 0, 0, 0, 0, 0, 0,
+				123, 4086, 65446, 65447, 65448, 65449, 65450, 65451, 65452, 65453, 0, 0, 0, 0, 0, 0, 250, 4087, 65454, 65455, 65456, 65457,
+				65458, 65459, 65460, 65461, 0, 0, 0, 0, 0, 0, 504, 32704, 65462, 65463, 65464, 65465, 65466, 65467, 65468, 65469, 0, 0, 0, 0,
+				0, 0, 505, 65470, 65471, 65472, 65473, 65474, 65475, 65476, 65477, 65478, 0, 0, 0, 0, 0, 0, 506, 65479, 65480, 65481, 65482,
+				65483, 65484, 65485, 65486, 65487, 0, 0, 0, 0, 0, 0, 1017, 65488, 65489, 65490, 65491, 65492, 65493, 65494, 65495, 65496, 0,
+				0, 0, 0, 0, 0, 1018, 65497, 65498, 65499, 65500, 65501, 65502, 65503, 65504, 65505, 0, 0, 0, 0, 0, 0, 2040, 65506, 65507,
+				65508, 65509, 65510, 65511, 65512, 65513, 65514, 0, 0, 0, 0, 0, 0, 65515, 65516, 65517, 65518, 65519, 65520, 65521, 65522,
+				65523, 65524, 0, 0, 0, 0, 0, 2041, 65525, 65526, 65527, 65528, 65529, 65530, 65531, 65532, 65533, 65534, 0, 0, 0, 0, 0};
+	lookup laht_nb : ns(5) = {4, 2, 2, 3, 4, 5, 7, 8, 10, 16, 16, 0, 0, 0, 0, 0, 0, 4, 5, 7, 9, 11, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 5, 8, 10, 12,
+				16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 6, 9, 12, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 6, 10, 16, 16, 16, 16, 					16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 7, 11, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 7, 12, 16, 16, 16, 16, 16, 16,
+				16, 16, 0, 0, 0, 0, 0, 0, 8, 12, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 9, 15, 16, 16, 16, 16, 16, 16, 16, 16,
+				0, 0, 0, 0, 0, 0, 9, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 9, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0,
+				0, 0, 0, 10, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 10, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0,
+				11, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 11, 16, 16,
+				16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0};
+	lookup caht_val : ns(16) ={0, 1, 4, 10, 24, 25, 56, 120, 500, 1014, 4084, 0, 0, 0, 0, 0, 0, 11, 57, 246, 501, 2038, 4085, 65416, 65417, 65418, 65419,
+				0, 0, 0, 0, 0, 0, 26, 247, 1015, 4086, 32706, 65420, 65421, 65422, 65423, 65424, 0, 0, 0, 0, 0, 0, 27, 248, 1016, 4087, 65425,
+				65426, 65427, 65428, 65429, 65430, 0, 0, 0, 0, 0, 0, 58, 502, 65431, 65432, 65433, 65434, 65435, 65436, 65437, 65438, 0, 0, 0,
+				0, 0, 0, 59, 1017, 65439, 65440, 65441, 65442, 65443, 65444, 65445, 65446, 0, 0, 0, 0, 0, 0, 121, 2039, 65447, 65448, 65449,
+				65450, 65451, 65452, 65453, 65454, 0, 0, 0, 0, 0, 0, 122, 2040, 65455, 65456, 65457, 65458, 65459, 65460, 65461, 65462, 0, 0,
+				0, 0, 0, 0, 249, 65463, 65464, 65465, 65466, 65467, 65468, 65469, 65470, 65471, 0, 0, 0, 0, 0, 0, 503, 65472, 65473, 65474,
+				65475, 65476, 65477, 65478, 65479, 65480, 0, 0, 0, 0, 0, 0, 504, 65481, 65482, 65483, 65484, 65485, 65486, 65487, 65488, 65489,
+				0, 0, 0, 0, 0, 0, 505, 65490, 65491, 65492, 65493, 65494, 65495, 65496, 65497, 65498, 0, 0, 0, 0, 0, 0, 506, 65499, 65500,
+				65501, 65502, 65503, 65504, 65505, 65506, 65507, 0, 0, 0, 0, 0, 0, 2041, 65508, 65509, 65510, 65511, 65512, 65513, 65514, 65515,
+				65516, 0, 0, 0, 0, 0, 0, 16352, 65517, 65518, 65519, 65520, 65521, 65522, 65523, 65524, 65525, 0, 0, 0, 0, 0, 1018, 32707,
+				65526, 65527, 65528, 65529, 65530, 65531, 65532, 65533, 65534, 0, 0, 0, 0, 0};
+	lookup caht_nb : ns(5) ={2, 2, 3, 4, 5, 7, 8, 10, 16, 16, 0, 0, 0, 0, 0, 0, 4, 5, 7, 9, 11, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 5, 8, 10, 12, 16,
+				16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 6, 9, 12, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 6, 10, 16, 16, 16, 16, 16, 16,
+				16, 16, 0, 0, 0, 0, 0, 0, 7, 11, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 7, 12, 16, 16, 16, 16, 16, 16, 16, 16, 0,
+				0, 0, 0, 0, 0, 8, 12, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 9, 15, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0,
+				0, 0, 9, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 9, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 10,
+				16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 10, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 11, 16, 16,
+				16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 11, 16, 16, 16, 16, 16,
+				16, 16, 16, 16, 16, 0, 0, 0, 0, 0};
+/*
+	$trace(cnt,"cnt.txt");
+	$trace(pix,"pix.txt");
+	$trace(level,"level.txt");
+	$trace(level2,"level2.txt");
+	$trace(pred_y,"pred_y.txt");
+	$trace(pred_u,"pred_u.txt");
+	$trace(pred_v,"pred_v.txt");
+	$trace(y1,"y1.txt");
+	$trace(y2,"y2.txt");
+	$trace(u,"u.txt");
+	$trace(v,"v.txt");
+	$trace(run,"run.txt");
+	$trace(tablenb,"tablenb.txt");
+	$trace(tablenb2,"tablenb2.txt");
+	$trace(e0,"e0.txt");
+	$trace(e1,"e1.txt");
+	$trace(write_next,"write_next.txt");
+	$trace(cnt_blok_16,"cnt_blok_16.txt");
+	$trace(len,"len.txt");
+	$trace(outen,"outen.txt");
+	$trace(outval,"outval.txt");
+	$trace(outnb,"outnb.txt");
+	$trace(a4r_y1,"a4r_y1.txt");
+	$trace(a4r_y2,"a4r_y2.txt");
+	$trace(a4r_u,"a4r_u.txt");
+	$trace(a4r_v,"a4r_v.txt");
+	$trace(a4r_y1,"r4_y1.txt");
+	$trace(a4r_y2,"r4_y2.txt");
+	$trace(a4r_u,"r4_u.txt");
+	$trace(a4r_v,"r4_v.txt");
+	$trace(blok,"blok.txt");
+	$trace(start_huf,"start_huf.txt");
+	$trace(fin_huf,"fin_huf.txt");*/
+
+	use magnitude_dp(level[0:6], len);
+
+	sfg pred_init{
+		pred_y = 0;
+		pred_u = 0;
+		pred_v = 0;
+}
+
+	sfg init{
+		cnt = 0;
+		run = 0;
+//		y1 = (st_y1==1) ? 1 :0;
+//		y2 = (st_y2==1) ? 1 :0;
+//		u = (st_u==1) ? 1 :0;
+//		v = (st_v==1) ? 1 :0;
+		fin_huf = 0;
+//		a4r_y1 = 0;
+//		a4r_y2 = 0;
+//		a4r_u = 0;
+//		a4r_v = 0;
+//		r4_y1 = 0;
+//		r4_y2 = 0;
+//		r4_u = 0;
+//		r4_v = 0;
+//		outen =0;
+//		outval =0;
+//		outnb = 0;
+		cnt_blok_16 = 0;
+	}
+
+	sfg blok_init{
+		blok == 0; // als we een start_huf krijgen --> blok op 0 zetten (BEN)
+
+	}
+
+	sfg blok_write{//je geeft een waarde aan y1, y2,... aan de hand van blok(BEN)
+		y1 = (blok == 0) ? 1: 0; //y1 is hier dus altijd 1
+		y2 = (blok == 1) ? 1: 0;
+		u = (blok == 2) ? 1: 0; // schrijf hier NIET blok == 10 want dat ervaart hij als 10 en niet als 2!!!!
+		v = (blok == 3) ? 1: 0;
+	}
+
+	sfg blok_plus{//je telt blok met 1 op//(BEN)
+		blok = blok + 1;
+	}
+
+	sfg prepare_first_read {
+		a4r_y1 = 0;
+		a4r_y2 = 0;
+		a4r_u = 0;
+		a4r_v = 0;
+		r4_y1 = (y1==1) ? 1 :0;
+		r4_y2 = (y2==1) ? 1 :0;
+		r4_u = (u==1) ? 1 :0;
+		r4_v = (v==1) ? 1 :0;
+	}
+
+	sfg prepare_read {
+		a4r_y1 = cnt < 64 ? cnt+1 : 0;
+		a4r_y2 = cnt < 64 ? cnt+1 : 0;
+		a4r_u = cnt < 64 ? cnt+1 : 0;
+		a4r_v = cnt < 64 ? cnt+1 : 0;
+		r4_y1 = (y1==1) ? 1 :0;
+		r4_y2 = (y2==1) ? 1 :0;
+		r4_u = (u==1) ? 1 :0;
+		r4_v = (v==1) ? 1 :0;
+	}
+
+	sfg read{
+		pix = ((y1 == 1) ? do4_y1 : (y2 == 1) ? do4_y2 : (u == 1) ? do4_u : do4_v);
+//		pix = ((y1 == 1) ? test1(cnt) : (y2 == 1) ? test2(cnt) : (u == 1) ? test3(cnt) : test4(cnt));
+//		pix = test(cnt);
+	}
+
+	sfg read_not{
+		a4r_y1 = 0;
+		a4r_y2 = 0;
+		a4r_u = 0;
+		a4r_v = 0;
+		r4_y1 = 0;
+		r4_y2 = 0;
+		r4_u = 0;
+		r4_v = 0;
+	}
+
+	sfg flags{
+		fin_huf = 0;
+	}
+	sfg fin{
+		fin_huf = 1;
+	}
+
+	sfg write_not{
+		outen = 0;
+		outval = 0;
+		outnb = 0;
+	} 
+
+	sfg dc_tablenb{
+		tablenb = len;
+		tablenb2 = tablenb;
+	}
+
+	sfg init_dc{
+//		pred = (((y1 == 1)|(y2 == 1)) ? pred_y : (u == 1) ? pred_u :  pred_v);
+		level = (pix >= 0) ? (pix - (((y1 == 1)|(y2 == 1)) ? pred_y : (u == 1) ? pred_u :  pred_v)) : (128|(~(pix - ((((y1 == 1)|(y2 == 1)) ? pred_y : (u == 1) ? pred_u :  pred_v) + 1))));
+		pred_y = (((y1 == 1)|(y2 == 1)) ? pix : pred_y); // kijk waar je de predictie in moet stoppen. (BEN)
+		pred_u = (u == 1) ? pix : pred_u;
+		pred_v = (v == 1) ? pix : pred_v;
+	}
+
+	sfg init_ac{
+		level =(pix >= 0) ?  pix : (128 | (~(pix - 1 )));
+		level2 = level;
+	}
+	sfg always_s2{
+		cnt = cnt + 1;
+		fin_huf = 0;
+	}
+	sfg table{
+		e0 = ((cnt == 1) ? (((y1 == 1) | (y2 == 1)) ? ldht_val(tablenb) : cdht_val(tablenb)) : (((y1 == 1) | (y2 == 1)) ? laht_val(tablenb) : 				caht_val(tablenb)));
+		e1 = ((cnt == 1) ? (((y1 == 1) | (y2 == 1)) ? ldht_nb(tablenb) : cdht_nb(tablenb)) : (((y1 == 1) | (y2 == 1)) ? laht_nb(tablenb) : 				caht_nb(tablenb)));
+	}
+	sfg ac_tablenb{
+		tablenb = ((run << 4) | len);
+		tablenb2 = tablenb[0:3];
+		write_next = 1;
+		run = 0;
+	}
+	sfg ac_0{
+		run = run + 1;
+		tablenb2 = tablenb[0:3];
+		write_next = 0;
+	}
+	sfg ac_16{
+		run = run -15;
+		cnt_blok_16 = cnt_blok_16 + 1;
+		write_next = 0;
+		
+	}
+	sfg ac_end{
+		tablenb2 = tablenb[0:3];
+	}
+	sfg write_end{
+		outen = 1;
+		outval = ((y1 == 1) | (y2 == 1)) ? laht_val(0) : caht_val(0);
+		outnb = ((y1 == 1) | (y2 == 1)) ? laht_nb(0) : caht_nb(0);	
+	}
+	sfg write_0{
+		outen = 1;//als je enablebit gewoon 1 zet ga je gewoon wegschrijven wat er in outval en outbits zit.
+		outval =((y1 == 1) | (y2 == 1)) ? laht_val(16) : caht_val(16);
+		outnb =((y1 == 1) | (y2 == 1)) ? laht_nb(16) : caht_nb(16);
+		cnt_blok_16 = cnt_blok_16-1;
+	}
+	sfg write_1{
+		outen = 1;//als je enablebit gewoon 1 zet ga je gewoon wegschrijven wat er in outval en outbits zit.
+		outval = e0;
+		outnb = e1;
+	}
+	sfg write_2{
+		outen = 1;//als je enablebit gewoon 1 zet ga je gewoon wegschrijven wat er in outval en outbits zit.
+		outval = (level2 > 0) ? level2 : ((~(level2[0:6]))&(~(127<<tablenb2)));//################################################################
+		outnb = tablenb2;
+	}
+	sfg write{
+		fin_huf = 0;
+	}
+	sfg no_out{
+		fin_huf = 1;
+		outen = 0;
+		outval = 0;
+		outnb = 0;
+		a4r_y1 = 0;
+		a4r_y2 = 0;
+		a4r_u = 0;
+		a4r_v = 0;
+		r4_y1 = 0;
+		r4_y2 = 0;
+		r4_u = 0;
+		r4_v = 0;
+	}
+	sfg disp{
+		$display("Klok en count: ",$cycle,"  ",$dec, cnt,"  Readpix, level en level2:",pix," ",level," ",level2,"  eo, e1 en outval: ",e0," ",e1," ",outval," ", outen);
+	}
+	sfg disp1{
+		$display("Klok en count: ",1," ",$cycle);
+	}
+	sfg disp2{
+		$display("Klok en count: ",2," ",$cycle);
+	}
+	sfg disp3{
+		$display("Klok en count: ",3," ",$cycle);
+	}
+	sfg disp4{
+		$display("Klok en count: ",4," ",$cycle);
+	}
+	sfg disp5{
+		$display("Klok en count: ",5," ",$cycle);
+	}
+	sfg disp6{
+		$display("Klok en count: ",6," ",$cycle);
+	}
+	sfg disp7{
+		$display("Klok en count: ",7," ",$cycle);
+	}
+	
+	always {
+		start=start_huf;
+	}
+}
+
+fsm huf_fsm(huf_dp){
+
+	initial s0;
+	state s1, s2, s3, s4, s5, s6, s7;
+
+//	@s0 if(start_huf == 1) then (init, disp) ->s1;
+//				else (no_out)  ->s0;
+
+	@s0 (init, pred_init, write_not, prepare_first_read ,disp) ->s7;//
+
+	@s1 if (cnt == 0)					then (prepare_read,read, 			write_not, flags, disp) ->s2;//
+		else if(cnt == 1)				then (prepare_read,read, 	dc_tablenb, 	write_not, flags, disp)	->s2;//
+		else if(cnt == 2 & level!=0)			then (prepare_read,read, 	ac_tablenb, 	write_not, flags, disp) 	->s4;//
+		else if(cnt == 2)				then (prepare_read,read, 	ac_0, 		write_not, flags, disp) 	->s4;//
+		else if(cnt == 64 & write_next & level!=0)	then (prepare_read, ac_tablenb, 	write_not, flags, disp)	->s4;
+		else if(cnt == 64 & write_next)			then (prepare_read, ac_0,		write_not, flags, disp) 	->s4;
+		else if(cnt == 64 & level != 0)			then (prepare_read, ac_tablenb, 	write_not, flags, disp1)	->s2;	
+		else if(cnt == 64)				then (prepare_read, ac_0, 		write_not, flags, disp)	->s2;
+		else if(cnt == 65 & write_next)			then (prepare_read, ac_end,		write_not, flags, disp3)	->s4;
+		else if(cnt == 65)				then (prepare_read, 		write_not, flags, disp5)	->s4;
+		else if(write_next & level!=0)			then (prepare_read,read, 	ac_tablenb, 	write_not, flags, disp) 	->s4;//
+		else if(write_next)				then (prepare_read,read, 	ac_0, 		write_not, flags, disp) 	->s4;//
+		else if(level != 0)				then (prepare_read,read, 	ac_tablenb, 	write_not, flags, disp) ->s2;//
+		else if(run < 15)				then (prepare_read,read, 	ac_0, 		write_not, flags, disp) ->s2;//
+								else (prepare_read,read, 	ac_16, 		write_not, flags, disp)	->s2;//
+
+	@s2 if(cnt == 0)			then (prepare_read, init_dc, 	write_not, always_s2, disp) 	->s1;//
+		else if(cnt == 1 & level ==0)   then (prepare_read, init_ac, 	write_not, always_s2, disp) 	->s1;//
+		else if(cnt == 1)		then (prepare_read, init_ac, table, write_not, always_s2, disp) 	->s1;//
+		else if(level == 0) 		then (prepare_read, init_ac, 	write_not, always_s2, disp) 	->s1;//
+						else (prepare_read, init_ac, table, write_not, always_s2, disp2) 	->s1;//
+	@s3 if(start == 1) then (init, write_not, prepare_read, disp, blok_init, blok_write, blok_plus) ->s1;
+				else (no_out, disp)  ->s3;
+	@s4 if(cnt == 65 & write_next==0)			then (prepare_read, write_end, write, disp) ->s6;
+				else if(cnt_blok_16 > 0) 	then (prepare_read, write_0, write) 	->s4;//
+				else(prepare_read, write_1, write, disp4) 	->s5;//
+	@s5 if(cnt == 65)	then(prepare_read, write_2, write, disp5) 	->s6;
+				else(prepare_read, write_2, write, disp) 	->s2;//
+	@s6 if(blok == 0)	then(prepare_read, write_not, fin)		->s3;//(BEN)
+				else(prepare_read, write_not, init, blok_write, blok_plus) ->s1;// je moet alles initialiseren en blok met 1 optellen voor de volgende keer(BEN)
+	@s7 if(start ==1) then (init, write_not, prepare_first_read, disp, blok_init, blok_write, blok_plus) ->s1;
+				else(flags, read_not, write_not) ->s7;
+}
