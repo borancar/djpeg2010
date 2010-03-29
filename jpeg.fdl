@@ -15,7 +15,7 @@
 #include "quant.fdl"
 #include "b4.fdl"
 #include "huf.fdl"
-#include "fdump.fdl"
+#include "fdump2.fdl"
 #include "b6.fdl"
 
 
@@ -130,7 +130,7 @@ dp jpeg     (  in datar : ns(8);
   sig outval : ns(16);
   sig outnb  : ns(7);
 
-  use huf_dp( start_huf, finish_huf, do4_y1, do4_y2, do4_u, do4_v,
+  use huf( start_huf, finish_huf, do4_y1, do4_y2, do4_u, do4_v,
              a4r_y1, a4r_y2, a4r_u, a4r_v, r4_y1, r4_y2, r4_u, r4_v, outen, outval, outnb );
 
   sig  a6       : ns(10);

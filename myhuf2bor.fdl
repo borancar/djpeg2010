@@ -11,7 +11,7 @@ dp magnitude_dp( in v:ns(7); out mag:ns(3)){
 
 hardwired magnitude_hw(magnitude_dp){ do_always;}
 
-dp huf_dp(in start_huf : ns(1); out fin_huf : ns(1);
+dp huf(in start_huf : ns(1); out fin_huf : ns(1);
 		in do4_y1:tc(8); in do4_y2:tc(8);in do4_u:tc(8);in do4_v:tc(8); //Value of the pixel we read in buffer 4.
 		out a4r_y1, a4r_y2, a4r_u, a4r_v : ns(6);//Adres of the data we want to read from buffer 4.
 	  	out r4_y1, r4_y2, r4_u, r4_v  : ns(1); //Indicates which block we want to read from buffer 4.)
@@ -339,7 +339,7 @@ dp huf_dp(in start_huf : ns(1); out fin_huf : ns(1);
 	}
 }
 
-fsm huf_fsm(huf_dp){
+fsm huf_fsm(huf){
 
 	initial s0;
 	state s1, s2, s3, s4, s5, s6, s7;

@@ -9,7 +9,10 @@ dp quantl( in start_quant : ns(1);
 	
 reg i:ns(6);
 reg fin:ns(1);
-reg ti:ns(6);
+reg qi:ns(6);
+reg wadr:ns(6);
+reg x:tc(15);
+reg y:tc(8);
 
 reg start :ns(1);
 always {start=start_quant;}
@@ -27,91 +30,14 @@ sfg init
 {
 	i=0;
 	fin=0;
+	qi=0;
+	wadr=0;
 }
 
-sfg no_read {
-	rd3=0;
-	ad3=0;
-}
-
-sfg fin_no {
-	fin_quant = 0;
-}
-
-sfg no_write {
-	wr4=0;
-	ad4=0;
-	dout=0;
-}
-
-sfg prepare_read {
-	ad3=i;
-	i=i+1;
-	rd3=1;
-}
-
-sfg calculate_l{
-	ti = i-1;
-	dout=(((din*lqt(ti))+16384)>>15)&0xff;
-	ad4=zigzag(ti);
-	wr4=1;
-	$display("quant_out:  ",dout);
-}
-
-sfg fin_yes {
-	fin=1;
-	fin_quant = 1;
-}
-
-sfg clear_fin {
-	fin=0;
-}
-
-sfg flag_fin {
-	fin_quant=fin;
-}
-
-}
-
-
-fsm quantc_ctl(quantl) {
-   	initial s0;
-   	state s1,s2;
-   	@s0 (init,fin_no,no_write,no_read) -> s1;
-	@s1 if(start==0) then (no_read, no_write, flag_fin) -> s1;
-  	    else (prepare_read, no_write, clear_fin, fin_no) -> s2;
-   	@s2 if(i == 0) then (no_read, no_write, fin_yes) -> s1;
-	    else (prepare_read, calculate_l, flag_fin) -> s2;
-}
-
-dp quanty1 : quantl
-dp quanty2 : quantl
-
-dp quantc ( in start_quant : ns(1); 
-            out fin_quant : ns(1);
-            in  din : tc(15);
-			out dout : tc(8);
-			out rd3, wr4 : ns(1);
-			out ad3, ad4 : ns(6)) {
-reg i:ns(6);
-reg fin:ns(1);
-reg ti:ns(6);
-
-reg start :ns(1);
-always {start=start_quant;}
-lookup cqt : ns(15) ={240,164,130,74,41,52,76,149,164,101,86,38,29,37,55,108,130,86,42,26,31,40,58,114,74,38,26,29,35,44,65,127,41,29,31, 35,41,52,76,149,52,37,40,44,52,67,97,190,76,55,58,65,76,97,141,277,149,108,114,127,149,190,277,543};
-lookup zigzag: ns(6)=     {0,   2,   3,   9,  10,  20,  21,  35,
-                           1,   4,   8,  11,  19,  22,  34,  36,
-                           5,   7,  12,  18,  23,  33,  37,  48,
-                           6,  13,  17,  24,  32,  38,  47,  49,
-                          14,  16,  25,  31,  39,  46,  50,  57,
-                          15,  26,  30,  40,  45,  51,  56,  58,
-                          27,  29,  41,  44,  52,  55,  59,  62,
-                          28,  42,  43,  53,  54,  60,  61,  63 };
-sfg init
-{
+sfg next_block {
 	i=0;
-	fin=0;
+	qi=0;
+	wadr=0;
 }
 
 sfg no_read {
@@ -136,11 +62,9 @@ sfg prepare_read {
 }
 
 sfg calculate_c{
-	ti = i-1;
-	dout=(((din*cqt(ti))+16384)>>15)&0xff;
-	ad4=zigzag(ti);
-	wr4=1;
-	$display("quant_out:  ",dout);
+	y = (((x*lqt(qi))+16384)>>15)&0xff;
+	$display("quant_out:  ",y);
+	qi = qi+1;
 }
 
 sfg fin_yes {
@@ -156,17 +80,145 @@ sfg flag_fin {
 	fin_quant=fin;
 }
 
+sfg read {
+	x=din;
+}
+
+sfg write {
+	ad4=zigzag(wadr);
+	wr4=1;
+	wadr=wadr+1;
+	dout=y;
+}
+
+}
+
+
+fsm quantl_ctl(quantl) {
+   	initial s0;
+   	state s1,s2,s3,s4,s5,s6,s7,s8,s9;
+   	@s0 (init,fin_no,no_write,no_read) -> s1;
+	@s1 if(~start) then (no_read, no_write, flag_fin) -> s1;
+  	    else (prepare_read, no_write, clear_fin, fin_no) -> s3;
+ 	@s3 (prepare_read, read, no_write, flag_fin) -> s4;
+	@s4 (prepare_read, read, calculate_c, no_write, flag_fin) -> s5;
+	@s5 if(i==0) then (no_read, read, calculate_c, write, flag_fin) -> s6;
+		else (prepare_read, read, calculate_c, write, flag_fin) -> s5;
+	@s6 (no_read, calculate_c, write, flag_fin) -> s7;
+	@s7 (no_read, write, flag_fin) -> s8;
+	@s8 (no_read, no_write, next_block, flag_fin) -> s9;
+	@s9 (no_read, no_write, fin_yes) -> s1;
+
+}
+dp quanty1 : quantl
+dp quanty2 : quantl
+
+dp quantc ( in start_quant : ns(1); 
+            out fin_quant : ns(1);
+            in  din : tc(15);
+			out dout : tc(8);
+			out rd3, wr4 : ns(1);
+			out ad3, ad4 : ns(6)) {
+reg i:ns(6);
+reg fin:ns(1);
+reg qi:ns(6);
+reg wadr:ns(6);
+reg x:tc(15);
+reg y:tc(8);
+
+reg start :ns(1);
+always {start=start_quant;}
+lookup cqt : ns(15) ={240,164,130,74,41,52,76,149,164,101,86,38,29,37,55,108,130,86,42,26,31,40,58,114,74,38,26,29,35,44,65,127,41,29,31, 35,41,52,76,149,52,37,40,44,52,67,97,190,76,55,58,65,76,97,141,277,149,108,114,127,149,190,277,543};
+lookup zigzag: ns(6)=     {0,   2,   3,   9,  10,  20,  21,  35,
+                           1,   4,   8,  11,  19,  22,  34,  36,
+                           5,   7,  12,  18,  23,  33,  37,  48,
+                           6,  13,  17,  24,  32,  38,  47,  49,
+                          14,  16,  25,  31,  39,  46,  50,  57,
+                          15,  26,  30,  40,  45,  51,  56,  58,
+                          27,  29,  41,  44,  52,  55,  59,  62,
+                          28,  42,  43,  53,  54,  60,  61,  63 };
+sfg init
+{
+	i=0;
+	fin=0;
+	qi=0;
+	wadr=0;
+}
+
+sfg next_block {
+	i=0;
+	qi=0;
+	wadr=0;
+}
+
+sfg no_read {
+	rd3=0;
+	ad3=0;
+}
+
+sfg fin_no {
+	fin_quant = 0;
+}
+
+sfg no_write {
+	wr4=0;
+	ad4=0;
+	dout=0;
+}
+
+sfg prepare_read {
+	ad3=i;
+	i=i+1;
+	rd3=1;
+}
+
+sfg calculate_c{
+	y = (((x*cqt(qi))+16384)>>15)&0xff;
+	$display("quant_out:  ",y);
+	qi = qi+1;
+}
+
+sfg fin_yes {
+	fin=1;
+	fin_quant = 1;
+}
+
+sfg clear_fin {
+	fin=0;
+}
+
+sfg flag_fin {
+	fin_quant=fin;
+}
+
+sfg read {
+	x=din;
+}
+
+sfg write {
+	ad4=zigzag(wadr);
+	wr4=1;
+	wadr=wadr+1;
+	dout=y;
+}
+
 }
 
 
 fsm quantc_ctl(quantc) {
    	initial s0;
-   	state s1,s2;
+   	state s1,s2,s3,s4,s5,s6,s7,s8,s9;
    	@s0 (init,fin_no,no_write,no_read) -> s1;
-	@s1 if(start==0) then (no_read, no_write, flag_fin) -> s1;
-  	    else (prepare_read, no_write, clear_fin, fin_no) -> s2;
-   	@s2 if(i == 0) then (no_read, no_write, fin_yes) -> s1;
-	    else (prepare_read, calculate_c, flag_fin) -> s2;
+	@s1 if(~start) then (no_read, no_write, flag_fin) -> s1;
+  	    else (prepare_read, no_write, clear_fin, fin_no) -> s3;
+	@s3 (prepare_read, read, no_write, flag_fin) -> s4;
+	@s4 (prepare_read, read, calculate_c, no_write, flag_fin) -> s5;
+	@s5 if(i==0) then (no_read, read, calculate_c, write, flag_fin) -> s6;
+		else (prepare_read, read, calculate_c, write, flag_fin) -> s5;
+	@s6 (no_read, calculate_c, write, flag_fin) -> s7;
+	@s7 (no_read, write, flag_fin) -> s8;
+	@s8 (no_read, no_write, next_block, flag_fin) -> s9;
+	@s9 (no_read, no_write, fin_yes) -> s1;
 }
 dp quantu  : quantc
 dp quantv  : quantc

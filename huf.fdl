@@ -11,7 +11,7 @@ dp magnitude_dp( in v:ns(7); out mag:ns(3)){
 
 hardwired magnitude_hw(magnitude_dp){ do_always;}
 
-dp huf_dp(in start_huf : ns(1); out fin_huf : ns(1);
+dp huf(in start_huf : ns(1); out fin_huf : ns(1);
 		in do4_y1:tc(8); in do4_y2:tc(8);in do4_u:tc(8);in do4_v:tc(8); //Value of the pixel we read in buffer 4.
 		out a4r_y1, a4r_y2, a4r_u, a4r_v : ns(6);//Adres of the data we want to read from buffer 4.
 	  	out r4_y1, r4_y2, r4_u, r4_v  : ns(1); //Indicates which block we want to read from buffer 4.)
@@ -47,11 +47,16 @@ dp huf_dp(in start_huf : ns(1); out fin_huf : ns(1);
 	reg pred_y:tc(8);
 	reg pred_u:tc(8);
 	reg pred_v:tc(8);
-	
-	reg start :ns(1);
-	
-	sig len:ns(4);
 
+	sig len:ns(4);
+	sig pred:ns(8);
+
+	lookup test1 : tc(8) ={45,24,21,4,-20,-4,-7,3,-4,-6,-1,6,2,6,7,0,-5,-1,-1,2,2,0,-2,-1,-1,0,0,-2,2,2,0,1,0,1,0,-1,2,0,0,0,0,0,-1,0,0,0,0,0,-1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+	lookup test : tc(8) = {45,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+//	lookup test : tc(8) = {-16,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+	lookup test2 : tc(8) = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+	lookup test3 : tc(8) = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+	lookup test4 : tc(8) = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 	lookup ldht_val : ns(9) = {0, 2, 3, 4, 5, 6, 14, 30, 62, 126, 254, 510};
 	lookup ldht_nb : ns(4) = {2, 3, 3, 3, 3, 3, 4, 5, 6, 7, 8, 9};
 	lookup cdht_val : ns(11) = {0, 1, 2, 6, 14, 30, 62, 126, 254, 510, 1022, 2046};
@@ -93,40 +98,40 @@ dp huf_dp(in start_huf : ns(1); out fin_huf : ns(1);
 				16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 10, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 11, 16, 16,
 				16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 11, 16, 16, 16, 16, 16,
 				16, 16, 16, 16, 16, 0, 0, 0, 0, 0};
-/*
-	$trace(cnt,"cnt.txt");
-	$trace(pix,"pix.txt");
-	$trace(level,"level.txt");
-	$trace(level2,"level2.txt");
-	$trace(pred_y,"pred_y.txt");
-	$trace(pred_u,"pred_u.txt");
-	$trace(pred_v,"pred_v.txt");
-	$trace(y1,"y1.txt");
-	$trace(y2,"y2.txt");
-	$trace(u,"u.txt");
-	$trace(v,"v.txt");
-	$trace(run,"run.txt");
-	$trace(tablenb,"tablenb.txt");
-	$trace(tablenb2,"tablenb2.txt");
-	$trace(e0,"e0.txt");
-	$trace(e1,"e1.txt");
-	$trace(write_next,"write_next.txt");
-	$trace(cnt_blok_16,"cnt_blok_16.txt");
-	$trace(len,"len.txt");
-	$trace(outen,"outen.txt");
-	$trace(outval,"outval.txt");
-	$trace(outnb,"outnb.txt");
-	$trace(a4r_y1,"a4r_y1.txt");
-	$trace(a4r_y2,"a4r_y2.txt");
-	$trace(a4r_u,"a4r_u.txt");
-	$trace(a4r_v,"a4r_v.txt");
-	$trace(a4r_y1,"r4_y1.txt");
-	$trace(a4r_y2,"r4_y2.txt");
-	$trace(a4r_u,"r4_u.txt");
-	$trace(a4r_v,"r4_v.txt");
-	$trace(blok,"blok.txt");
-	$trace(start_huf,"start_huf.txt");
-	$trace(fin_huf,"fin_huf.txt");*/
+
+// 	$trace(cnt,"cnt.txt");
+// 	$trace(pix,"pix.txt");
+// 	$trace(level,"level.txt");
+// 	$trace(level2,"level2.txt");
+// 	$trace(pred_y,"pred_y.txt");
+// 	$trace(pred_u,"pred_u.txt");
+// 	$trace(pred_v,"pred_v.txt");
+// 	$trace(y1,"y1.txt");
+// 	$trace(y2,"y2.txt");
+// 	$trace(u,"u.txt");
+// 	$trace(v,"v.txt");
+// 	$trace(run,"run.txt");
+// 	$trace(tablenb,"tablenb.txt");
+// 	$trace(tablenb2,"tablenb2.txt");
+// 	$trace(e0,"e0.txt");
+// 	$trace(e1,"e1.txt");
+// 	$trace(write_next,"write_next.txt");
+// 	$trace(cnt_blok_16,"cnt_blok_16.txt");
+// 	$trace(len,"len.txt");
+// 	$trace(outen,"outen.txt");
+// 	$trace(outval,"outval.txt");
+// 	$trace(outnb,"outnb.txt");
+// 	$trace(a4r_y1,"a4r_y1.txt");
+// 	$trace(a4r_y2,"a4r_y2.txt");
+// 	$trace(a4r_u,"a4r_u.txt");
+// 	$trace(a4r_v,"a4r_v.txt");
+// 	$trace(r4_y1,"r4_y1.txt");
+// 	$trace(r4_y2,"r4_y2.txt");
+// 	$trace(r4_u,"r4_u.txt");
+// 	$trace(r4_v,"r4_v.txt");
+// 	$trace(blok,"blok.txt");
+// 	$trace(start_huf,"start_huf.txt");
+// 	$trace(fin_huf,"fin_huf.txt");
 
 	use magnitude_dp(level[0:6], len);
 
@@ -175,20 +180,6 @@ dp huf_dp(in start_huf : ns(1); out fin_huf : ns(1);
 	}
 
 	sfg read{
-		a4r_y1 = cnt;
-		a4r_y2 = cnt;
-		a4r_u = cnt;
-		a4r_v = cnt;
-		r4_y1 = (y1==1) ? 1 :0;
-		r4_y2 = (y2==1) ? 1 :0;
-		r4_u = (u==1) ? 1 :0;
-		r4_v = (v==1) ? 1 :0;
-		pix = ((y1 == 1) ? do4_y1 : (y2 == 1) ? do4_y2 : (u == 1) ? do4_u : do4_v);
-//		pix = ((y1 == 1) ? test1(cnt) : (y2 == 1) ? test2(cnt) : (u == 1) ? test3(cnt) : test4(cnt));
-//		pix = test(cnt);
-	}
-
-	sfg read_not{
 		a4r_y1 = 0;
 		a4r_y2 = 0;
 		a4r_u = 0;
@@ -197,6 +188,58 @@ dp huf_dp(in start_huf : ns(1); out fin_huf : ns(1);
 		r4_y2 = 0;
 		r4_u = 0;
 		r4_v = 0;
+		pix = ((y1 == 1) ? do4_y1 : (y2 == 1) ? do4_y2 : (u == 1) ? do4_u : do4_v);
+//		pix = ((y1 == 1) ? test1(cnt) : (y2 == 1) ? test2(cnt) : (u == 1) ? test3(cnt) : test4(cnt));
+//		pix = test(cnt);
+	}
+
+	sfg read_repair{
+		a4r_y1 = cnt;
+		a4r_y2 = cnt;
+		a4r_u = cnt;
+		a4r_v = cnt;
+		r4_y1 = (y1==1) ? 1 :0;
+		r4_y2 = (y2==1) ? 1 :0;
+		r4_u = (u==1) ? 1 :0;
+		r4_v = (v==1) ? 1 :0;
+}
+
+	sfg read_not{
+		a4r_y1 = cnt;
+		a4r_y2 = cnt;
+		a4r_u = cnt;
+		a4r_v = cnt;
+		r4_y1 = (y1==1) ? 1 :0;
+		r4_y2 = (y2==1) ? 1 :0;
+		r4_u = (u==1) ? 1 :0;
+		r4_v = (v==1) ? 1 :0;
+//		a4r_y1 = 0;
+//		a4r_y2 = 0;
+//		a4r_u = 0;
+//		a4r_v = 0;
+//		r4_y1 = 0;
+//		r4_y2 = 0;
+//		r4_u = 0;
+//		r4_v = 0;
+	}
+
+	sfg read_in{
+		a4r_y1 = cnt+1;
+		a4r_y2 = cnt+1;
+		a4r_u = cnt+1;
+		a4r_v = cnt+1;
+		r4_y1 = (y1==1) ? 1 :0;
+		r4_y2 = (y2==1) ? 1 :0;
+		r4_u = (u==1) ? 1 :0;
+		r4_v = (v==1) ? 1 :0;
+//		a4r_y1 = 0;
+//		a4r_y2 = 0;
+//		a4r_u = 0;
+//		a4r_v = 0;
+//		r4_y1 = 0;
+//		r4_y2 = 0;
+//		r4_u = 0;
+//		r4_v = 0;
 	}
 
 	sfg flags{
@@ -218,8 +261,8 @@ dp huf_dp(in start_huf : ns(1); out fin_huf : ns(1);
 	}
 
 	sfg init_dc{
-//		pred = (((y1 == 1)|(y2 == 1)) ? pred_y : (u == 1) ? pred_u :  pred_v);
-		level = (pix >= 0) ? (pix - (((y1 == 1)|(y2 == 1)) ? pred_y : (u == 1) ? pred_u :  pred_v)) : (128|(~(pix - ((((y1 == 1)|(y2 == 1)) ? pred_y : (u == 1) ? pred_u :  pred_v) + 1))));
+		pred = ((y1 == 1)|(y2 == 1)) ? pred_y : (u == 1) ? pred_u :  pred_v;
+		level = (pix >= 0) ? (pix - pred) : (128|(~(pix - pred + 1)));
 		pred_y = (((y1 == 1)|(y2 == 1)) ? pix : pred_y); // kijk waar je de predictie in moet stoppen. (BEN)
 		pred_u = (u == 1) ? pix : pred_u;
 		pred_v = (v == 1) ? pix : pred_v;
@@ -319,13 +362,9 @@ dp huf_dp(in start_huf : ns(1); out fin_huf : ns(1);
 	sfg disp7{
 		$display("Klok en count: ",7," ",$cycle);
 	}
-	
-	always {
-		start=start_huf;
-	}
 }
 
-fsm huf_fsm(huf_dp){
+fsm huf_fsm(huf){
 
 	initial s0;
 	state s1, s2, s3, s4, s5, s6, s7;
@@ -333,7 +372,7 @@ fsm huf_fsm(huf_dp){
 //	@s0 if(start_huf == 1) then (init, disp) ->s1;
 //				else (no_out)  ->s0;
 
-	@s0 (init, pred_init, write_not, read_not ,disp) ->s7;//
+	@s0 (init, pred_init, write_not, read_not ,disp) ->s3;//
 
 	@s1 if (cnt == 0)					then (read, 			write_not, flags, disp) ->s2;//
 		else if(cnt == 1)				then (read, 	dc_tablenb, 	write_not, flags, disp)	->s2;//
@@ -351,12 +390,12 @@ fsm huf_fsm(huf_dp){
 		else if(run < 15)				then (read, 	ac_0, 		write_not, flags, disp) ->s2;//
 								else (read, 	ac_16, 		write_not, flags, disp)	->s2;//
 
-	@s2 if(cnt == 0)			then (read_not, init_dc, 	write_not, always_s2, disp) 	->s1;//
-		else if(cnt == 1 & level ==0)   then (read_not, init_ac, 	write_not, always_s2, disp) 	->s1;//
-		else if(cnt == 1)		then (read_not, init_ac, table, write_not, always_s2, disp) 	->s1;//
-		else if(level == 0) 		then (read_not, init_ac, 	write_not, always_s2, disp) 	->s1;//
-						else (read_not, init_ac, table, write_not, always_s2, disp2) 	->s1;//
-	@s3 if(start == 1) then (init, write_not, read_not, disp, blok_init, blok_write, blok_plus) ->s1;
+	@s2 if(cnt == 0)			then (read_in, init_dc, 	write_not, always_s2, disp) 	->s1;//
+		else if(cnt == 1 & level ==0)   then (read_in, init_ac, 	write_not, always_s2, disp) 	->s1;//
+		else if(cnt == 1)		then (read_in, init_ac, table, write_not, always_s2, disp) 	->s1;//
+		else if(level == 0) 		then (read_in, init_ac, 	write_not, always_s2, disp) 	->s1;//
+						else (read_in, init_ac, table, write_not, always_s2, disp2) 	->s1;//
+	@s3 if(start_huf == 1) then (init, write_not, read_not, disp, blok_init, blok_write, blok_plus) 	->s7;
 				else (no_out, disp)  ->s3;
 	@s4 if(cnt == 65 & write_next==0)			then (read_not, write_end, write, disp) ->s6;
 				else if(cnt_blok_16 > 0) 	then (read_not, write_0, write) 	->s4;//
@@ -365,6 +404,5 @@ fsm huf_fsm(huf_dp){
 				else(read_not, write_2, write, disp) 	->s2;//
 	@s6 if(blok == 0)	then(read_not, write_not, fin)		->s3;//(BEN)
 				else(read_not, write_not, init, blok_write, blok_plus) ->s1;// je moet alles initialiseren en blok met 1 optellen voor de volgende keer(BEN)
-	@s7 if(start ==1) then (init, write_not, read_not, disp, blok_init, blok_write, blok_plus) ->s1;
-				else(flags, read_not, write_not) ->s7;
+	@s7 (read_in, write_not, flags, disp) ->s1;
 }
