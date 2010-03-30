@@ -1,0 +1,234 @@
+dp huf(in start_huf : ns(1); out fin_huf : ns(1);
+		in do4_y1:tc(8); in do4_y2:tc(8);in do4_u:tc(8);in do4_v:tc(8); //Value of the pixel we read in buffer 4.
+		out a4r_y1, a4r_y2, a4r_u, a4r_v : ns(6);//Adres of the data we want to read from buffer 4.
+	  	out r4_y1, r4_y2, r4_u, r4_v  : ns(1); //Indicates which block we want to read from buffer 4.)
+		out outen  : ns(1);//The data on the dataline is valid data.
+          	out outval : ns(16);//Data for fdump !!!!
+          	out outnb  : ns(5))//Nb of bits outval bevat !!!!
+{
+	lookup ldht_val : ns(9) = {0, 2, 3, 4, 5, 6, 14, 30, 62, 126, 254, 510};
+	lookup ldht_nb : ns(4) = {2, 3, 3, 3, 3, 3, 4, 5, 6, 7, 8, 9};
+	lookup cdht_val : ns(11) = {0, 1, 2, 6, 14, 30, 62, 126, 254, 510, 1022, 2046};
+	lookup cdht_nb : ns(4) = {2, 2, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
+	lookup laht_val : ns(16) = {10, 0, 1, 4, 11, 26, 120, 248, 1014, 65410, 65411, 0, 0, 0, 0, 0, 0, 12, 27, 121, 502, 2038, 65412, 65413, 65414,
+				65415, 65416, 0, 0, 0, 0, 0, 0, 28, 249, 1015, 4084, 65417, 65418, 65419, 65420, 65421, 65422, 0, 0, 0, 0, 0, 0, 58,
+				503, 4085, 65423, 65424, 65425, 65426, 65427, 65428, 65429, 0, 0, 0, 0, 0, 0, 59, 1016, 65430, 65431, 65432, 65433, 65434,
+				65435, 65436, 65437, 0, 0, 0, 0, 0, 0, 122, 2039, 65438, 65439, 65440, 65441, 65442, 65443, 65444, 65445, 0, 0, 0, 0, 0, 0,
+				123, 4086, 65446, 65447, 65448, 65449, 65450, 65451, 65452, 65453, 0, 0, 0, 0, 0, 0, 250, 4087, 65454, 65455, 65456, 65457,
+				65458, 65459, 65460, 65461, 0, 0, 0, 0, 0, 0, 504, 32704, 65462, 65463, 65464, 65465, 65466, 65467, 65468, 65469, 0, 0, 0, 0,
+				0, 0, 505, 65470, 65471, 65472, 65473, 65474, 65475, 65476, 65477, 65478, 0, 0, 0, 0, 0, 0, 506, 65479, 65480, 65481, 65482,
+				65483, 65484, 65485, 65486, 65487, 0, 0, 0, 0, 0, 0, 1017, 65488, 65489, 65490, 65491, 65492, 65493, 65494, 65495, 65496, 0,
+				0, 0, 0, 0, 0, 1018, 65497, 65498, 65499, 65500, 65501, 65502, 65503, 65504, 65505, 0, 0, 0, 0, 0, 0, 2040, 65506, 65507,
+				65508, 65509, 65510, 65511, 65512, 65513, 65514, 0, 0, 0, 0, 0, 0, 65515, 65516, 65517, 65518, 65519, 65520, 65521, 65522,
+				65523, 65524, 0, 0, 0, 0, 0, 2041, 65525, 65526, 65527, 65528, 65529, 65530, 65531, 65532, 65533, 65534, 0, 0, 0, 0, 0};
+	lookup laht_nb : ns(5) = {4, 2, 2, 3, 4, 5, 7, 8, 10, 16, 16, 0, 0, 0, 0, 0, 0, 4, 5, 7, 9, 11, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 5, 8, 10, 12,
+				16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 6, 9, 12, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 6, 10, 16, 16, 16, 16, 					16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 7, 11, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 7, 12, 16, 16, 16, 16, 16, 16,
+				16, 16, 0, 0, 0, 0, 0, 0, 8, 12, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 9, 15, 16, 16, 16, 16, 16, 16, 16, 16,
+				0, 0, 0, 0, 0, 0, 9, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 9, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0,
+				0, 0, 0, 10, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 10, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0,
+				11, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 11, 16, 16,
+				16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0};
+	lookup caht_val : ns(16) ={0, 1, 4, 10, 24, 25, 56, 120, 500, 1014, 4084, 0, 0, 0, 0, 0, 0, 11, 57, 246, 501, 2038, 4085, 65416, 65417, 65418, 65419,
+				0, 0, 0, 0, 0, 0, 26, 247, 1015, 4086, 32706, 65420, 65421, 65422, 65423, 65424, 0, 0, 0, 0, 0, 0, 27, 248, 1016, 4087, 65425,
+				65426, 65427, 65428, 65429, 65430, 0, 0, 0, 0, 0, 0, 58, 502, 65431, 65432, 65433, 65434, 65435, 65436, 65437, 65438, 0, 0, 0,
+				0, 0, 0, 59, 1017, 65439, 65440, 65441, 65442, 65443, 65444, 65445, 65446, 0, 0, 0, 0, 0, 0, 121, 2039, 65447, 65448, 65449,
+				65450, 65451, 65452, 65453, 65454, 0, 0, 0, 0, 0, 0, 122, 2040, 65455, 65456, 65457, 65458, 65459, 65460, 65461, 65462, 0, 0,
+				0, 0, 0, 0, 249, 65463, 65464, 65465, 65466, 65467, 65468, 65469, 65470, 65471, 0, 0, 0, 0, 0, 0, 503, 65472, 65473, 65474,
+				65475, 65476, 65477, 65478, 65479, 65480, 0, 0, 0, 0, 0, 0, 504, 65481, 65482, 65483, 65484, 65485, 65486, 65487, 65488, 65489,
+				0, 0, 0, 0, 0, 0, 505, 65490, 65491, 65492, 65493, 65494, 65495, 65496, 65497, 65498, 0, 0, 0, 0, 0, 0, 506, 65499, 65500,
+				65501, 65502, 65503, 65504, 65505, 65506, 65507, 0, 0, 0, 0, 0, 0, 2041, 65508, 65509, 65510, 65511, 65512, 65513, 65514, 65515,
+				65516, 0, 0, 0, 0, 0, 0, 16352, 65517, 65518, 65519, 65520, 65521, 65522, 65523, 65524, 65525, 0, 0, 0, 0, 0, 1018, 32707,
+				65526, 65527, 65528, 65529, 65530, 65531, 65532, 65533, 65534, 0, 0, 0, 0, 0};
+	lookup caht_nb : ns(5) ={2, 2, 3, 4, 5, 7, 8, 10, 16, 16, 0, 0, 0, 0, 0, 0, 4, 5, 7, 9, 11, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 5, 8, 10, 12, 16,
+				16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 6, 9, 12, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 6, 10, 16, 16, 16, 16, 16, 16,
+				16, 16, 0, 0, 0, 0, 0, 0, 7, 11, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 7, 12, 16, 16, 16, 16, 16, 16, 16, 16, 0,
+				0, 0, 0, 0, 0, 8, 12, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 9, 15, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0,
+				0, 0, 9, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 9, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 10,
+				16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 10, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 11, 16, 16,
+				16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 11, 16, 16, 16, 16, 16,
+				16, 16, 16, 16, 16, 0, 0, 0, 0, 0};	
+	
+	reg pred : tc(8);
+	reg pix : tc(8);
+	reg start : ns(1);
+	reg fin : ns(1);
+	reg curr_addr : ns(7);
+	reg rle : ns(7);
+	reg comp : ns(3);
+	
+	sfg init {
+		pred = 0;
+		curr_addr = 0;
+		fin = 0;
+		pix = 0;
+		rle = 0;
+		comp = 0;
+	}
+	
+	sfg next_block {
+		curr_addr = 0;
+		pix = 0;
+		rle = 0;
+		comp = 0;
+	}
+	
+	sfg next_component {
+		curr_addr = 0;
+		pix = 0;
+		rle = 0;
+		comp = comp + 1;
+	}
+	
+	sfg no_output {
+		outen = 0;
+		outval = 0;
+		outnb = 0;
+	}
+	
+	sfg issue_read {
+		a4r_y1 = comp == 0 ? curr_addr : 0; r4_y1 = comp == 0 ? 1 : 0;
+		a4r_y2 = comp == 1 ? curr_addr : 0; r4_y2 = comp == 1 ? 1 : 0;
+		a4r_u  = comp == 2 ? curr_addr : 0; r4_u  = comp == 2 ? 1 : 0;
+		a4r_v  = comp == 3 ? curr_addr : 0; r4_v  = comp == 3 ? 1 : 0;
+		
+		curr_addr = curr_addr + 1;
+	}
+	
+	sfg no_issue_read {
+		a4r_y1 = 0; r4_y1 = 0;
+		a4r_y2 = 0; r4_y2 = 0;
+		a4r_u = 0; r4_u = 0;
+		a4r_v = 0; r4_v = 0;
+	}
+	
+	sfg read {
+		pix = do4_y1;
+	}
+
+	sig level : ns(7);
+	sig len : ns(3);
+	sig val : ns(16);
+	sig diff : tc(8);
+	
+	sfg calc_level_dc {
+		diff = pix - pred;
+		level = diff >= 0 ? diff : -diff;
+		pred = pix;
+	}
+	
+	sfg calc_level_ac {
+		level = pix >= 0 ? pix : -pix;
+	}
+	
+	sfg calc_aux {
+		len = level[6] ? 7 : (level[5] ? 6 : (level[4] ? 5 : (level[3] ? 4 : (level[2] ? 3 : (level[1] ? 2 : (level[0] ? 1 : 0))))));
+		val = level;
+	}
+	
+	reg e0_val : ns(16);
+	reg e0_nb : ns(3);
+	reg e1_val : ns(16);
+	reg e1_nb : ns(3);
+	
+	sfg calc_dc {
+		e0_nb  = ~comp[1] ? ldht_nb(len) : cdht_nb(len);
+		e0_val = ~comp[1] ? ldht_val(len) : cdht_val(len);
+		e1_nb  = len;
+		e1_val = val;
+	}
+	
+	sig index : ns(8);
+	
+	sfg calc_ac {
+		index = (rle << 4) | len;
+		
+		e0_nb  = ~comp[1] ? laht_nb(index) : caht_nb(index);
+		e0_val = ~comp[1] ? laht_val(index) : caht_val(index);
+		e1_nb  = len;
+		e1_val = val;
+	}
+	
+	sfg write1 {
+		outen = 1;
+		outnb = e0_nb;
+		outval = e0_val;
+	}
+	
+	sfg write2 {
+		outen = 1;
+		outnb = e1_nb;
+		outval = e1_val;		
+	}
+	
+	sfg write_0 {
+		outen = 1;
+		outnb = laht_nb(0xF0);
+		outval = laht_val(0xF0);
+		rle = rle - 16;
+	}
+	
+	sfg write_rem0 {
+		outen = 1;
+		outnb = laht_nb(0x00);
+		outval = laht_val(0x00);
+	}
+	
+	sfg fin_yes {
+		fin = 1;
+		fin_huf = 1;
+	}
+	
+	sfg fin_no {
+		fin_huf = 0;
+	}
+	
+	sfg clear_fin {
+		fin = 0;
+	}
+	
+	sfg flag_fin {
+		fin_huf = fin;
+	}
+	
+	sfg inc_rle {
+		rle = rle + 1;
+	}
+	
+	sfg clear_rle {
+		rle = 0;
+	}
+	
+	always {
+		start = start_huf;
+	}
+}
+
+fsm huf_ctl(huf) {
+	initial s0;
+	state s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s00, s01;
+
+	@s0 (init, fin_no, no_issue_read, no_output) -> s1;
+	@s1 if(start) then (no_output, fin_no, clear_fin, issue_read) -> s2;
+		else (no_output, no_issue_read, flag_fin) -> s1;
+	@s2 (read, no_issue_read, no_output, fin_no) -> s3;
+	@s3 (no_issue_read, calc_level_dc, calc_aux, calc_dc, no_output, fin_no) -> s4;
+	@s4 (issue_read, write1, fin_no) -> s5;
+	@s5 (no_issue_read, read, write2, fin_no) -> s6;
+	@s6 if(curr_addr == 65) then (no_issue_read, no_output, fin_no) -> s9;
+		else if(pix == 0) then (issue_read, no_output, inc_rle, fin_no) -> s00;
+		else (no_issue_read, calc_level_ac, calc_aux, calc_ac, no_output, fin_no) -> s7;
+
+	@s00 (no_issue_read, read, no_output, fin_no) -> s01;
+	@s01 if(curr_addr == 65) then (no_issue_read, read, no_output, fin_no) -> s9;
+		 else if(pix == 0) then (issue_read, no_output, inc_rle, fin_no) -> s00;
+		 else if(rle >= 16) then (no_issue_read, write_0, fin_no) -> s01;
+		 else (no_issue_read, calc_level_ac, calc_aux, calc_ac, no_output, fin_no) -> s7;
+
+	@s7 (issue_read, write1, fin_no) -> s8;
+	@s8 (no_issue_read, read, write2, fin_no, clear_rle) -> s6;
+	
+	@s9 if(rle > 0) then (no_issue_read, write_rem0, fin_no, next_block) -> s10;
+		else (no_issue_read, no_output, fin_no, next_block) -> s10;
+	
+	@s10 (no_issue_read, no_output, fin_yes) -> s1;
+}

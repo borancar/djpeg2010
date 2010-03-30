@@ -14,7 +14,7 @@
 #include "b3.fdl"
 #include "quant.fdl"
 #include "b4.fdl"
-#include "huf.fdl"
+#include "hufbor.fdl"
 #include "fdump2.fdl"
 #include "b6.fdl"
 
