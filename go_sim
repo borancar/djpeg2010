@@ -1,5 +1,5 @@
 #!/bin/bash -fx
 
-cpp -P jpeg.fdl | fdlsim 31000 > log
+cpp -P jpeg.fdl | fdlsim 60000 > log
 grep JPEG log | awk '{print $2}' | xxd -r -p > bunny_gezel.jpg
 #rm -f log

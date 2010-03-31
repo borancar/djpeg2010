@@ -3,8 +3,8 @@
 //    ver0.0 18th of Mar  , 2006 //
 /////////////////////////////////// 
 
-/////// b6 : Buffer6(32) (Single Buffer of 32bitx1024word SRAM) 
+/////// b6 : Buffer6(32) (Single Buffer of 32bitx4096word SRAM) 
 
-ipblock b6(in  address  : ns(10); in  wr,rd : ns(1);
+ipblock b6(in  address  : ns(12); in  wr,rd : ns(1);
              in  idata    : ns(32); out odata   : ns(32)) {
-  iptype "ram"; ipparm "wl=32"; ipparm "size=1024"; }
+  iptype "ram"; ipparm "wl=32"; ipparm "size=4096"; }

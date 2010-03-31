@@ -1,3 +1,5 @@
+$option "vcd"
+
 dp huf(in start_huf : ns(1); out fin_huf : ns(1);
 		in do4_y1:tc(8); in do4_y2:tc(8);in do4_u:tc(8);in do4_v:tc(8); //Value of the pixel we read in buffer 4.
 		out a4r_y1, a4r_y2, a4r_u, a4r_v : ns(6);//Adres of the data we want to read from buffer 4.
@@ -6,58 +8,42 @@ dp huf(in start_huf : ns(1); out fin_huf : ns(1);
           	out outval : ns(16);//Data for fdump !!!!
           	out outnb  : ns(5))//Nb of bits outval bevat !!!!
 {
-	lookup ldht_val : ns(9) = {0, 2, 3, 4, 5, 6, 14, 30, 62, 126, 254, 510};
+	lookup ldht_val : ns(9) = {0x0, 0x2, 0x3, 0x4, 0x5, 0x6, 0xE, 0x1E, 0x3E, 0x7E, 0xFE, 0x1FE};
 	lookup ldht_nb : ns(4) = {2, 3, 3, 3, 3, 3, 4, 5, 6, 7, 8, 9};
-	lookup cdht_val : ns(11) = {0, 1, 2, 6, 14, 30, 62, 126, 254, 510, 1022, 2046};
+	lookup cdht_val : ns(11) = {0x0, 0x1, 0x2, 0x6, 0xE, 0x1E, 0x3E, 0x7E, 0xFE, 0x1FE, 0x3FE, 0x7FE};
 	lookup cdht_nb : ns(4) = {2, 2, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
-	lookup laht_val : ns(16) = {10, 0, 1, 4, 11, 26, 120, 248, 1014, 65410, 65411, 0, 0, 0, 0, 0, 0, 12, 27, 121, 502, 2038, 65412, 65413, 65414,
-				65415, 65416, 0, 0, 0, 0, 0, 0, 28, 249, 1015, 4084, 65417, 65418, 65419, 65420, 65421, 65422, 0, 0, 0, 0, 0, 0, 58,
-				503, 4085, 65423, 65424, 65425, 65426, 65427, 65428, 65429, 0, 0, 0, 0, 0, 0, 59, 1016, 65430, 65431, 65432, 65433, 65434,
-				65435, 65436, 65437, 0, 0, 0, 0, 0, 0, 122, 2039, 65438, 65439, 65440, 65441, 65442, 65443, 65444, 65445, 0, 0, 0, 0, 0, 0,
-				123, 4086, 65446, 65447, 65448, 65449, 65450, 65451, 65452, 65453, 0, 0, 0, 0, 0, 0, 250, 4087, 65454, 65455, 65456, 65457,
-				65458, 65459, 65460, 65461, 0, 0, 0, 0, 0, 0, 504, 32704, 65462, 65463, 65464, 65465, 65466, 65467, 65468, 65469, 0, 0, 0, 0,
-				0, 0, 505, 65470, 65471, 65472, 65473, 65474, 65475, 65476, 65477, 65478, 0, 0, 0, 0, 0, 0, 506, 65479, 65480, 65481, 65482,
-				65483, 65484, 65485, 65486, 65487, 0, 0, 0, 0, 0, 0, 1017, 65488, 65489, 65490, 65491, 65492, 65493, 65494, 65495, 65496, 0,
-				0, 0, 0, 0, 0, 1018, 65497, 65498, 65499, 65500, 65501, 65502, 65503, 65504, 65505, 0, 0, 0, 0, 0, 0, 2040, 65506, 65507,
-				65508, 65509, 65510, 65511, 65512, 65513, 65514, 0, 0, 0, 0, 0, 0, 65515, 65516, 65517, 65518, 65519, 65520, 65521, 65522,
-				65523, 65524, 0, 0, 0, 0, 0, 2041, 65525, 65526, 65527, 65528, 65529, 65530, 65531, 65532, 65533, 65534, 0, 0, 0, 0, 0};
-	lookup laht_nb : ns(5) = {4, 2, 2, 3, 4, 5, 7, 8, 10, 16, 16, 0, 0, 0, 0, 0, 0, 4, 5, 7, 9, 11, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 5, 8, 10, 12,
-				16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 6, 9, 12, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 6, 10, 16, 16, 16, 16, 					16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 7, 11, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 7, 12, 16, 16, 16, 16, 16, 16,
-				16, 16, 0, 0, 0, 0, 0, 0, 8, 12, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 9, 15, 16, 16, 16, 16, 16, 16, 16, 16,
-				0, 0, 0, 0, 0, 0, 9, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 9, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0,
-				0, 0, 0, 10, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 10, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0,
-				11, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 11, 16, 16,
-				16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0};
-	lookup caht_val : ns(16) ={0, 1, 4, 10, 24, 25, 56, 120, 500, 1014, 4084, 0, 0, 0, 0, 0, 0, 11, 57, 246, 501, 2038, 4085, 65416, 65417, 65418, 65419,
-				0, 0, 0, 0, 0, 0, 26, 247, 1015, 4086, 32706, 65420, 65421, 65422, 65423, 65424, 0, 0, 0, 0, 0, 0, 27, 248, 1016, 4087, 65425,
-				65426, 65427, 65428, 65429, 65430, 0, 0, 0, 0, 0, 0, 58, 502, 65431, 65432, 65433, 65434, 65435, 65436, 65437, 65438, 0, 0, 0,
-				0, 0, 0, 59, 1017, 65439, 65440, 65441, 65442, 65443, 65444, 65445, 65446, 0, 0, 0, 0, 0, 0, 121, 2039, 65447, 65448, 65449,
-				65450, 65451, 65452, 65453, 65454, 0, 0, 0, 0, 0, 0, 122, 2040, 65455, 65456, 65457, 65458, 65459, 65460, 65461, 65462, 0, 0,
-				0, 0, 0, 0, 249, 65463, 65464, 65465, 65466, 65467, 65468, 65469, 65470, 65471, 0, 0, 0, 0, 0, 0, 503, 65472, 65473, 65474,
-				65475, 65476, 65477, 65478, 65479, 65480, 0, 0, 0, 0, 0, 0, 504, 65481, 65482, 65483, 65484, 65485, 65486, 65487, 65488, 65489,
-				0, 0, 0, 0, 0, 0, 505, 65490, 65491, 65492, 65493, 65494, 65495, 65496, 65497, 65498, 0, 0, 0, 0, 0, 0, 506, 65499, 65500,
-				65501, 65502, 65503, 65504, 65505, 65506, 65507, 0, 0, 0, 0, 0, 0, 2041, 65508, 65509, 65510, 65511, 65512, 65513, 65514, 65515,
-				65516, 0, 0, 0, 0, 0, 0, 16352, 65517, 65518, 65519, 65520, 65521, 65522, 65523, 65524, 65525, 0, 0, 0, 0, 0, 1018, 32707,
-				65526, 65527, 65528, 65529, 65530, 65531, 65532, 65533, 65534, 0, 0, 0, 0, 0};
-	lookup caht_nb : ns(5) ={2, 2, 3, 4, 5, 7, 8, 10, 16, 16, 0, 0, 0, 0, 0, 0, 4, 5, 7, 9, 11, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 5, 8, 10, 12, 16,
-				16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 6, 9, 12, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 6, 10, 16, 16, 16, 16, 16, 16,
-				16, 16, 0, 0, 0, 0, 0, 0, 7, 11, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 7, 12, 16, 16, 16, 16, 16, 16, 16, 16, 0,
-				0, 0, 0, 0, 0, 8, 12, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 9, 15, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0,
-				0, 0, 9, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 9, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 10,
-				16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 10, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 11, 16, 16,
-				16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 11, 16, 16, 16, 16, 16,
-				16, 16, 16, 16, 16, 0, 0, 0, 0, 0};	
+	lookup laht_val : ns(16) = {0xA, 0x0, 0x1, 0x4, 0xB, 0x1A, 0x78, 0xF8, 0x3F6, 0xFF82, 0xFF83, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xC, 0x1B, 0x79, 0x1F6, 0x7F6, 0xFF84, 0xFF85, 0xFF86, 0xFF87, 0xFF88, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1C, 0xF9, 0x3F7, 0xFF4, 0xFF89, 0xFF8A, 0xFF8B, 0xFF8C, 0xFF8D, 0xFF8E, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x3A, 0x1F7, 0xFF5, 0xFF8F, 0xFF90, 0xFF91, 0xFF92, 0xFF93, 0xFF94, 0xFF95, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x3B, 0x3F8, 0xFF96, 0xFF97, 0xFF98, 0xFF99, 0xFF9A, 0xFF9B, 0xFF9C, 0xFF9D, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x7A, 0x7F7, 0xFF9E, 0xFF9F, 0xFFA0, 0xFFA1, 0xFFA2, 0xFFA3, 0xFFA4, 0xFFA5, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x7B, 0xFF6, 0xFFA6, 0xFFA7, 0xFFA8, 0xFFA9, 0xFFAA, 0xFFAB, 0xFFAC, 0xFFAD, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xFA, 0xFF7, 0xFFAE, 0xFFAF, 0xFFB0, 0xFFB1, 0xFFB2, 0xFFB3, 0xFFB4, 0xFFB5, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1F8, 0x7FC0, 0xFFB6, 0xFFB7, 0xFFB8, 0xFFB9, 0xFFBA, 0xFFBB, 0xFFBC, 0xFFBD, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1F9, 0xFFBE, 0xFFBF, 0xFFC0, 0xFFC1, 0xFFC2, 0xFFC3, 0xFFC4, 0xFFC5, 0xFFC6, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1FA, 0xFFC7, 0xFFC8, 0xFFC9, 0xFFCA, 0xFFCB, 0xFFCC, 0xFFCD, 0xFFCE, 0xFFCF, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x3F9, 0xFFD0, 0xFFD1, 0xFFD2, 0xFFD3, 0xFFD4, 0xFFD5, 0xFFD6, 0xFFD7, 0xFFD8, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x3FA, 0xFFD9, 0xFFDA, 0xFFDB, 0xFFDC, 0xFFDD, 0xFFDE, 0xFFDF, 0xFFE0, 0xFFE1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x7F8, 0xFFE2, 0xFFE3, 0xFFE4, 0xFFE5, 0xFFE6, 0xFFE7, 0xFFE8, 0xFFE9, 0xFFEA, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xFFEB, 0xFFEC, 0xFFED, 0xFFEE, 0xFFEF, 0xFFF0, 0xFFF1, 0xFFF2, 0xFFF3, 0xFFF4, 0x0, 0x0, 0x0, 0x0, 0x0, 0x7F9, 0xFFF5, 0xFFF6, 0xFFF7, 0xFFF8, 0xFFF9, 0xFFFA, 0xFFFB, 0xFFFC, 0xFFFD, 0xFFFE, 0x0, 0x0, 0x0, 0x0, 0x0}; 
+	lookup laht_nb : ns(5) = {4, 2, 2, 3, 4, 5, 7, 8, 10, 16, 16, 0, 0, 0, 0, 0, 0, 4, 5, 7, 9, 11, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 5, 8, 10, 12, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 6, 9, 12, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 6, 10, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 7, 11, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 7, 12, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 8, 12, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 9, 15, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 9, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 9, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 10, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 10, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 11, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 11, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0};
+	lookup caht_val : ns(16) ={0x0, 0x1, 0x4, 0xA, 0x18, 0x19, 0x38, 0x78, 0x1F4, 0x3F6, 0xFF4, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xB, 0x39, 0xF6, 0x1F5, 0x7F6, 0xFF5, 0xFF88, 0xFF89, 0xFF8A, 0xFF8B, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1A, 0xF7, 0x3F7, 0xFF6, 0x7FC2, 0xFF8C, 0xFF8D, 0xFF8E, 0xFF8F, 0xFF90, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1B, 0xF8, 0x3F8, 0xFF7, 0xFF91, 0xFF92, 0xFF93, 0xFF94, 0xFF95, 0xFF96, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x3A, 0x1F6, 0xFF97, 0xFF98, 0xFF99, 0xFF9A, 0xFF9B, 0xFF9C, 0xFF9D, 0xFF9E, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x3B, 0x3F9, 0xFF9F, 0xFFA0, 0xFFA1, 0xFFA2, 0xFFA3, 0xFFA4, 0xFFA5, 0xFFA6, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x79, 0x7F7, 0xFFA7, 0xFFA8, 0xFFA9, 0xFFAA, 0xFFAB, 0xFFAC, 0xFFAD, 0xFFAE, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x7A, 0x7F8, 0xFFAF, 0xFFB0, 0xFFB1, 0xFFB2, 0xFFB3, 0xFFB4, 0xFFB5, 0xFFB6, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xF9, 0xFFB7, 0xFFB8, 0xFFB9, 0xFFBA, 0xFFBB, 0xFFBC, 0xFFBD, 0xFFBE, 0xFFBF, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1F7, 0xFFC0, 0xFFC1, 0xFFC2, 0xFFC3, 0xFFC4, 0xFFC5, 0xFFC6, 0xFFC7, 0xFFC8, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1F8, 0xFFC9, 0xFFCA, 0xFFCB, 0xFFCC, 0xFFCD, 0xFFCE, 0xFFCF, 0xFFD0, 0xFFD1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1F9, 0xFFD2, 0xFFD3, 0xFFD4, 0xFFD5, 0xFFD6, 0xFFD7, 0xFFD8, 0xFFD9, 0xFFDA, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1FA, 0xFFDB, 0xFFDC, 0xFFDD, 0xFFDE, 0xFFDF, 0xFFE0, 0xFFE1, 0xFFE2, 0xFFE3, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x7F9, 0xFFE4, 0xFFE5, 0xFFE6, 0xFFE7, 0xFFE8, 0xFFE9, 0xFFEA, 0xFFEB, 0xFFEC, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x3FE0, 0xFFED, 0xFFEE, 0xFFEF, 0xFFF0, 0xFFF1, 0xFFF2, 0xFFF3, 0xFFF4, 0xFFF5, 0x0, 0x0, 0x0, 0x0, 0x0, 0x3FA, 0x7FC3, 0xFFF6, 0xFFF7, 0xFFF8, 0xFFF9, 0xFFFA, 0xFFFB, 0xFFFC, 0xFFFD, 0xFFFE, 0x0, 0x0, 0x0, 0x0, 0x0};
+	lookup caht_nb : ns(5) ={2, 2, 3, 4, 5, 5, 6, 7, 9, 10, 12, 0, 0, 0, 0, 0, 0, 4, 6, 8, 9, 11, 12, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 5, 8, 10, 12, 15, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 5, 8, 10, 12, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 6, 9, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 6, 10, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 7, 11, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 7, 11, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 8, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 9, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 9, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 9, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 9, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 11, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 0, 14, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0, 10, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 0, 0, 0, 0};
 	
-	reg pred : tc(8);
+	lookup zigzag: ns(6)=     {	 0,   8,  1,  2,  9, 16, 24, 17,
+								10,   3,  4, 11, 18, 25, 32, 40,
+								33,  26, 19, 12,  5,  6, 13, 20,
+								27,  34, 41, 48, 56, 49, 42, 35,
+								28,  21, 14,  7, 15, 22, 29, 36,
+								43,  50, 57, 58, 51, 44, 37, 30,
+								23,  31, 38, 45, 52, 59, 60, 53,
+								46,  39, 47, 54, 61, 62, 55, 63, 0 };
+	
+	reg lpred : tc(8);
+	reg crpred : tc(8);
+	reg cbpred : tc(8);
 	reg pix : tc(8);
 	reg start : ns(1);
 	reg fin : ns(1);
 	reg curr_addr : ns(7);
 	reg rle : ns(7);
 	reg comp : ns(3);
+	sig level : ns(7);
+	
+	$trace(rle, "rle.txt");
+	$trace(lpred, "lpred.txt");
 	
 	sfg init {
-		pred = 0;
+		lpred = 0;
+		crpred = 0;
+		cbpred = 0;
 		curr_addr = 0;
 		fin = 0;
 		pix = 0;
@@ -86,10 +72,10 @@ dp huf(in start_huf : ns(1); out fin_huf : ns(1);
 	}
 	
 	sfg issue_read {
-		a4r_y1 = comp == 0 ? curr_addr : 0; r4_y1 = comp == 0 ? 1 : 0;
-		a4r_y2 = comp == 1 ? curr_addr : 0; r4_y2 = comp == 1 ? 1 : 0;
-		a4r_u  = comp == 2 ? curr_addr : 0; r4_u  = comp == 2 ? 1 : 0;
-		a4r_v  = comp == 3 ? curr_addr : 0; r4_v  = comp == 3 ? 1 : 0;
+		a4r_y1 = comp == 0 ? zigzag(curr_addr) : 0; r4_y1 = comp == 0 ? 1 : 0;
+		a4r_y2 = comp == 1 ? zigzag(curr_addr) : 0; r4_y2 = comp == 1 ? 1 : 0;
+		a4r_u  = comp == 2 ? zigzag(curr_addr) : 0; r4_u  = comp == 2 ? 1 : 0;
+		a4r_v  = comp == 3 ? zigzag(curr_addr) : 0; r4_v  = comp == 3 ? 1 : 0;
 		
 		curr_addr = curr_addr + 1;
 	}
@@ -102,18 +88,23 @@ dp huf(in start_huf : ns(1); out fin_huf : ns(1);
 	}
 	
 	sfg read {
-		pix = do4_y1;
+		pix = comp == 0 ? do4_y1 : (comp == 1 ? do4_y2 : (comp == 2 ? do4_u : do4_v));
 	}
-
-	sig level : ns(7);
+	
 	sig len : ns(3);
 	sig val : ns(16);
 	sig diff : tc(8);
+	sig pred : tc(8);
+	
+	$trace(pix, "pix.txt");
 	
 	sfg calc_level_dc {
+		pred = (comp == 0 | comp == 1) ? lpred : (comp == 2 ? crpred : cbpred);
 		diff = pix - pred;
 		level = diff >= 0 ? diff : -diff;
-		pred = pix;
+		lpred = (comp == 0 | comp == 1) ? pix : lpred;
+		crpred = comp == 2 ? pix : crpred;
+		cbpred = comp == 3 ? pix : cbpred;
 	}
 	
 	sfg calc_level_ac {
@@ -122,19 +113,19 @@ dp huf(in start_huf : ns(1); out fin_huf : ns(1);
 	
 	sfg calc_aux {
 		len = level[6] ? 7 : (level[5] ? 6 : (level[4] ? 5 : (level[3] ? 4 : (level[2] ? 3 : (level[1] ? 2 : (level[0] ? 1 : 0))))));
-		val = level;
+		val = pix >= 0 ? pix : (pix-1)&(~(-1<<len));
 	}
 	
 	reg e0_val : ns(16);
-	reg e0_nb : ns(3);
+	reg e0_nb : ns(5);
 	reg e1_val : ns(16);
-	reg e1_nb : ns(3);
+	reg e1_nb : ns(5);
 	
 	sfg calc_dc {
 		e0_nb  = ~comp[1] ? ldht_nb(len) : cdht_nb(len);
 		e0_val = ~comp[1] ? ldht_val(len) : cdht_val(len);
 		e1_nb  = len;
-		e1_val = val;
+		e1_val = diff >= 0 ? diff : (diff-1)&(~(-1<<len));
 	}
 	
 	sig index : ns(8);
@@ -162,15 +153,15 @@ dp huf(in start_huf : ns(1); out fin_huf : ns(1);
 	
 	sfg write_0 {
 		outen = 1;
-		outnb = laht_nb(0xF0);
-		outval = laht_val(0xF0);
+		outnb = ~comp[1] ? laht_nb(0xF0) : caht_nb(0xF0);
+		outval = ~comp[1] ? laht_val(0xF0) : caht_val(0xF0);
 		rle = rle - 16;
 	}
 	
 	sfg write_rem0 {
 		outen = 1;
-		outnb = laht_nb(0x00);
-		outval = laht_val(0x00);
+		outnb = ~comp[1] ? laht_nb(0x00) : caht_nb(0x00);
+		outval = ~comp[1] ? laht_val(0x00) : caht_val(0x00);
 	}
 	
 	sfg fin_yes {
@@ -205,7 +196,7 @@ dp huf(in start_huf : ns(1); out fin_huf : ns(1);
 
 fsm huf_ctl(huf) {
 	initial s0;
-	state s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s00, s01;
+	state s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s00, s01;
 
 	@s0 (init, fin_no, no_issue_read, no_output) -> s1;
 	@s1 if(start) then (no_output, fin_no, clear_fin, issue_read) -> s2;
@@ -227,8 +218,10 @@ fsm huf_ctl(huf) {
 	@s7 (issue_read, write1, fin_no) -> s8;
 	@s8 (no_issue_read, read, write2, fin_no, clear_rle) -> s6;
 	
-	@s9 if(rle > 0) then (no_issue_read, write_rem0, fin_no, next_block) -> s10;
-		else (no_issue_read, no_output, fin_no, next_block) -> s10;
+	@s9 if(rle > 0) then (no_issue_read, write_rem0, fin_no, next_component) -> s10;
+		else (no_issue_read, no_output, fin_no, next_component) -> s10;
 	
-	@s10 (no_issue_read, no_output, fin_yes) -> s1;
+	@s10 if(comp == 4) then (no_issue_read, no_output, fin_no, next_block) -> s11;
+		 else (issue_read, no_output, fin_no) -> s2;
+	@s11 (no_issue_read, no_output, fin_yes) -> s1;
 }

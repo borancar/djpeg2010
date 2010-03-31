@@ -133,7 +133,7 @@ dp jpeg     (  in datar : ns(8);
   use huf( start_huf, finish_huf, do4_y1, do4_y2, do4_u, do4_v,
              a4r_y1, a4r_y2, a4r_u, a4r_v, r4_y1, r4_y2, r4_u, r4_v, outen, outval, outnb );
 
-  sig  a6       : ns(10);
+  sig  a6       : ns(12);
   sig  w6, r6   : ns(1);
   sig  di6, do6 : ns(32);
 
