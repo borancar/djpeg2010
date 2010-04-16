@@ -9,7 +9,7 @@
 #include "b1.fdl"
 #include "rgbyuv.fdl"
 #include "b2.fdl"
-#include "mydct_fin2.fdl"
+#include "dct.fdl"
 #include "b5.fdl"
 #include "b3.fdl"
 #include "quant.fdl"

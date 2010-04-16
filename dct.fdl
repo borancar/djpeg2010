@@ -22,6 +22,8 @@ dp dct  ( in start_dct : ns(1);
    reg start : ns(1);
    reg i : ns(3);
    reg j : ns(3);
+   reg x : ns(3);
+   reg y : ns(3);
    reg counter : ns(8);
    reg m,n,p : ns(6);
    reg t0, t1, t2, t3, t4, t5, t6, t7: tc(15);
@@ -66,11 +68,15 @@ dp dct  ( in start_dct : ns(1);
    //}
    sfg clear_ad5
    {
-      n=0;
+      n=0; x=0; y=0;
    }
    sfg count1
    {
       counter=counter+1; m=m+1; ad2r=m; n=n+8; ad5=n; i=i+1; ad3w=0; j=i;
+   }
+   sfg count4
+   {
+      counter=counter+1; m=m+1; ad2r=m; n=0; ad5=n; i=i+1; ad3w=0; j=i;
    }
    //sfg count5
    //{
@@ -84,9 +90,13 @@ dp dct  ( in start_dct : ns(1);
    {
       counter=counter+1; m=m+1; ad2r=m; n=n+9; ad5=n; i=i+1; ad3w=0; j=i;
    }
+   //sfg count2
+   //{
+   //   counter=counter+1; p=p+1; ad3w=p; n=n+1; ad5=n; i=i+1; ad2r=0; j=i;
+   //}
    sfg count2
    {
-      counter=counter+1; p=p+1; ad3w=p; n=n+1; ad5=n; i=i+1; ad2r=0; j=i;
+      counter=counter+1; p=p+1; ad3w=p; n=n+1; ad5=n; x=x+1; ad2r=0; y=x;
    }
    sfg temp
    {
@@ -163,14 +173,14 @@ dp dct  ( in start_dct : ns(1);
    }
    sfg rd_5
    {
-      t0=dout5;
-      t1=t0;
-      t2=t1;
-      t3=t2;
-      t4=t3;
-      t5=t4;
-      t6=t5;
-      t7=t6;
+      t7=dout5;
+      t6=t7;
+      t5=t6;
+      t4=t5;
+      t3=t4;
+      t2=t3;
+      t1=t2;
+      t0=t1;
    }
    sfg wr_3
    {
@@ -224,12 +234,12 @@ dp dct  ( in start_dct : ns(1);
 ////// DCT FSM //////
 fsm dct_ctl(dct) {
   initial s0;
-  state  s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15;
+  state  s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15, s16;
 
   @s0  ( init,temp ) -> s1;
   @s1  if (start<1) then ( init,temp ) ->s1;
-                else ( init,temp ) ->s2;
-  //@s15 (rd_2, count5, s251, temp) ->s2;
+                else ( init,temp ) ->s16;
+  @s16 (rd_2, count4, s251, temp) ->s2;
   @s2  if (j<7) then ( rd_2, count1, s251,temp ) -> s2;
                 else ( rd_2, count1, s251,temp ) -> s9;
   @s9  (dct_run, sdct ) -> s3;
@@ -240,19 +250,19 @@ fsm dct_ctl(dct) {
   @s4  if (j<7) then ( wr_5, count1, s253,temp ) -> s4;
                 else ( wr_5, count1, s253, change_bias,temp ) -> s13;
   @s13 (clear_ad5, sdct, temp) ->s5;
-  @s5  if (j<7) then ( rd_5, count2, s531,temp) -> s5;
+  @s5  if (y<7) then ( rd_5, count2, s531,temp) -> s5;
                 else ( rd_5, count2, s531,temp) ->s11;
   @s11  (dct_run, sdct2) -> s6;
   @s14  (dct_run, sdct) -> s6;
-  @s6  if (j<7) then ( rd_5, wr_3, count2, s532,temp ) -> s6;
+  @s6  if (y<7) then ( rd_5, wr_3, count2, s532,temp ) -> s6;
                 else if ( counter<127 ) then ( rd_5, wr_3, count2, s532,temp ) -> s14;
                 else ( rd_5, wr_3, count2, s532,temp ) -> s12;
   @s12  (dct_run, sdct) -> s7;
-  @s7  if (j<7) then ( wr_3, count2, s533,temp ) -> s7;
+  @s7  if (y<7) then ( wr_3, count2, s533,temp ) -> s7;
                 else ( wr_3, count2, s533,temp ) -> s8;
   @s8  (finish, temp) ->s15;
   @s15 if (start<1) then (finish, temp) -> s15;
-                else ( init, temp ) -> s2;
+                else ( init, temp ) -> s16;
 
 }
 dp dcty1 : dct
