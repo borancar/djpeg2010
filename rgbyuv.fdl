@@ -12,13 +12,12 @@ dp rgbyuv( in start_rgbyuv                     : ns(1);
           out ad2w_y1, ad2w_y2, ad2w_u, ad2w_v : ns(9);
           out wr2_y1,  wr2_y2,  wr2_u,  wr2_v  : ns(1) ) 
 {
-	reg r1, g1, b1, r2, g2, b2		: ns( 8);
-	sig r, g, b 				: ns( 8);
-	sig y1t, y2t, ut, vt, unb, vnb		: tc(15);
-	reg y1, y2, u, v 			: tc(15);
-	reg curr_raddr				: ns( 9);
-	reg curr_waddr				: ns( 9);
-	reg fin, start				: ns( 1);
+	reg r1, g1, b1, r2, g2, b2				: ns( 8);
+	sig y1t, y2t, u1t, v1t, u2t, v2t, ut, vt, unb, vnb	: tc(15);
+	reg y1, y2, u, v 					: ns( 8);
+	reg curr_raddr						: ns( 9);
+	reg curr_waddr						: ns( 9);
+	reg fin, start						: ns( 1);
    
    	sig t_a1r : ns(9);
   	 sig row, col : ns(9);
@@ -109,17 +108,22 @@ dp rgbyuv( in start_rgbyuv                     : ns(1);
 		b2 = dout1_b;
 	}
 
+	lookup coeff : tc(8) = { 38,  75,  15,
+				-22, -42,  64,
+				 64, -54, -10 };
+
 	sfg convert {
 		$display("Convert, cycle: ", $cycle);		
-		
-		r = (r1 + r2) >> 1;
-		g = (g1 + g2) >> 1;
-		b = (b1 + b2) >> 1;
-		
-		y1t =  38*r1 + 75*g1 + 15*b1; // x2^-7
-		y2t =  38*r2 + 75*g2 + 15*b2; // x2^-7
-		ut  = -22*r  - 42*g  + 64*b; // x2^-7
-		vt  =  64*r  - 54*g  - 10*b; // x2^-7
+				
+		y1t = coeff(0)*r1 + coeff(1)*g1 + coeff(2)*b1; // x2^-7
+		y2t = coeff(0)*r2 + coeff(1)*g2 + coeff(2)*b2; // x2^-7
+		u1t = coeff(3)*r1 + coeff(4)*g1 + coeff(5)*b1; // x2^-7
+		u2t = coeff(3)*r2 + coeff(4)*g2 + coeff(5)*b2; // x2^-7
+		v1t = coeff(6)*r1 + coeff(7)*g1 + coeff(8)*b1; // x2^-7
+		v2t = coeff(6)*r2 + coeff(7)*g2 + coeff(8)*b2; // x2^-7
+
+		ut = (u1t + u2t) >> 1;
+		vt = (v1t + v2t) >> 1;
 
 		y1 = y1t >> 7;
 		y2 = y2t >> 7;

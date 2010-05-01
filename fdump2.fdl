@@ -213,4 +213,3 @@ fsm fdump_ctl(fdump) {
 	@s9 (write_header, no_b6) -> s10;
 	@s10 (no_write_stream, no_b6) -> s10;
 }
-
