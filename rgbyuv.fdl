@@ -13,7 +13,7 @@ dp rgbyuv( in start_rgbyuv                     : ns(1);
           out wr2_y1,  wr2_y2,  wr2_u,  wr2_v  : ns(1) ) 
 {
 	reg r1, g1, b1, r2, g2, b2				: ns( 8);
-	sig y1t, y2t, u1t, v1t, u2t, v2t, ut, vt, unb, vnb	: tc(15);
+	sig y1t, y2t, u1t, v1t, u2t, v2t, ut, vt, unb, vnb	: tc(16);
 	reg y1, y2, u, v 					: ns( 8);
 	reg curr_raddr						: ns( 9);
 	reg curr_waddr						: ns( 9);
@@ -108,7 +108,7 @@ dp rgbyuv( in start_rgbyuv                     : ns(1);
 		b2 = dout1_b;
 	}
 
-	lookup coeff : tc(8) = { 38,  75,  15,
+	lookup coeff : tc(8) = { 38,  75,  14,
 				-22, -42,  64,
 				 64, -54, -10 };
 
