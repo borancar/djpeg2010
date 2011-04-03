@@ -62,7 +62,7 @@ sfg prepare_read {
 }
 
 sfg calculate_c{
-	y = (x*lqt(qi)) >> 15;
+	y = (x*lqt(qi) + 0x4000) >> 15;
 	$display($dp, " quant_out: ",y,",");
 	qi = qi+1;
 }
@@ -174,7 +174,7 @@ sfg prepare_read {
 }
 
 sfg calculate_c{
-	y = (x*cqt(qi)) >> 15;
+	y = (x*cqt(qi) + 0x4000) >> 15;
 	$display($dp, " quant_out: ",y,",");
 	qi = qi+1;
 }
