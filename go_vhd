@@ -1,6 +1,7 @@
-#!/bin/csh -fx
+#!/bin/bash -fx
 
 cpp -P jpeg.fdl > tmp.fdl
 fdlvhd -i tmp.fdl
-mv -f *.vhd VHDL
+mkdir -p VHDL
+find -maxdepth 0 -name *.vhd -exec mv -f {} VHDL \;
 rm tmp.fdl
