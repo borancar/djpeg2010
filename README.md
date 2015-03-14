@@ -14,3 +14,11 @@ The team in alphabetical order:
 - Shijie Hu
 - Ben Maes
 - Adrian Staniec
+
+## Running
+
+You need to have GEZEL installed and set in your path.
+
+There are 2 scripts provided:
+- go_sim - runs the simulation
+- go_vhd - compiles GEZEL sources into VHDL sources suitable for synthesis
